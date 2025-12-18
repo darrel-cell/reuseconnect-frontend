@@ -45,13 +45,19 @@ const Login = () => {
         <Card className="border-2 shadow-xl">
           <CardHeader className="space-y-4 text-center">
             <div className="flex justify-center mb-4">
-              {logo ? (
-                <img src={logo} alt={tenantName} className="h-12" />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xl">
-                  R
-                </div>
-              )}
+              <img 
+                src={logo || '/logo.avif'} 
+                alt={tenantName}
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  // Fallback to placeholder if logo fails to load
+                  e.currentTarget.style.display = 'none';
+                  const placeholder = document.createElement('div');
+                  placeholder.className = 'flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-2xl';
+                  placeholder.textContent = tenantName.charAt(0).toUpperCase();
+                  e.currentTarget.parentNode?.appendChild(placeholder);
+                }}
+              />
             </div>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>

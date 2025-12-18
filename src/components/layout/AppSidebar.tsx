@@ -120,13 +120,22 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          {logo ? (
-            <img src={logo} alt={tenantName} className={cn("h-10 w-auto", isCollapsed && "h-8")} />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
-              R
-            </div>
-          )}
+          <img 
+            src={logo || '/logo.avif'} 
+            alt={tenantName}
+            className={cn(
+              "object-contain transition-all duration-200",
+              isCollapsed ? "h-8 w-8" : "h-10 w-auto max-w-[140px]"
+            )}
+            onError={(e) => {
+              // Fallback to placeholder if logo fails to load
+              e.currentTarget.style.display = 'none';
+              const placeholder = document.createElement('div');
+              placeholder.className = `flex items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground font-bold ${isCollapsed ? 'h-8 w-8 text-base' : 'h-10 w-10 text-lg'}`;
+              placeholder.textContent = tenantName.charAt(0).toUpperCase();
+              e.currentTarget.parentNode?.insertBefore(placeholder, e.currentTarget);
+            }}
+          />
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-sidebar-foreground text-lg">

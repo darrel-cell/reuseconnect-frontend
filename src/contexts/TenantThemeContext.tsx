@@ -18,7 +18,7 @@ export function TenantThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState({
     primaryColor: 'hsl(168, 70%, 35%)',
     accentColor: 'hsl(168, 60%, 45%)',
-    logo: undefined as string | undefined,
+    logo: '/logo.avif' as string | undefined, // Default platform logo
     tenantName: 'Reuse ITAD Platform',
   });
 
@@ -27,7 +27,7 @@ export function TenantThemeProvider({ children }: { children: ReactNode }) {
       setTheme({
         primaryColor: tenant.primaryColor || 'hsl(168, 70%, 35%)',
         accentColor: tenant.accentColor || 'hsl(168, 60%, 45%)',
-        logo: tenant.logo,
+        logo: tenant.logo || '/logo.avif', // Use tenant logo or fallback to default
         tenantName: tenant.name,
       });
       applyTheme(tenant);
