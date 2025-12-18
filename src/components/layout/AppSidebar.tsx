@@ -6,10 +6,29 @@ import {
   FileText, 
   Settings,
   LogOut,
-  Building2
+  Building2,
+  Users,
+  DollarSign,
+  Receipt,
+  ClipboardList,
+  UserPlus
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenantTheme } from "@/contexts/TenantThemeContext";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -24,38 +43,95 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const mainNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "New Booking", url: "/booking", icon: Plus },
-  { title: "Jobs", url: "/jobs", icon: Truck },
-  { title: "CO₂e Dashboard", url: "/co2e", icon: Leaf },
-  { title: "Documents", url: "/documents", icon: FileText },
-];
+// Role-based navigation items
+const getMainNavItems = (role: string) => {
+  const baseItems = [
+    { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ['admin', 'client', 'reseller', 'driver'] },
+    { title: "New Booking", url: "/booking", icon: Plus, roles: ['admin', 'client', 'reseller'] },
+    { title: "Jobs", url: "/jobs", icon: Truck, roles: ['admin', 'client', 'reseller', 'driver'] },
+    { title: "Bookings", url: "/bookings", icon: FileText, roles: ['admin', 'client', 'reseller'] },
+    { title: "Booking Queue", url: "/admin/bookings", icon: ClipboardList, roles: ['admin'] },
+    { title: "Users", url: "/users", icon: Users, roles: ['admin'] },
+    { title: "Clients", url: "/clients", icon: Building2, roles: ['admin', 'reseller'] },
+    { title: "Invoices", url: "/invoices", icon: Receipt, roles: ['client'] },
+    { title: "Commission", url: "/commission", icon: DollarSign, roles: ['reseller'] },
+    { title: "CO₂e Dashboard", url: "/co2e", icon: Leaf, roles: ['admin', 'client', 'reseller'] },
+    { title: "Documents", url: "/documents", icon: FileText, roles: ['admin', 'client', 'reseller'] },
+  ];
+  
+  return baseItems.filter(item => item.roles.includes(role));
+};
 
 const bottomNavItems = [
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Settings", url: "/settings", icon: Settings, roles: ['admin', 'client', 'reseller', 'driver'] },
 ];
+
+// Logout Button with Confirmation
+function LogoutButton({ isCollapsed }: { isCollapsed: boolean }) {
+  const { logout } = useAuth();
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <SidebarMenuButton
+          tooltip="Logout"
+          className="h-11 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent w-full"
+        >
+          <LogOut className="h-5 w-5" />
+          {!isCollapsed && <span className="font-medium ml-3">Logout</span>}
+        </SidebarMenuButton>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to logout? You'll need to sign in again to access your account.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => logout()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Logout
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { user, logout } = useAuth();
+  const { tenantName, logo } = useTenantTheme();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
+  const mainNavItems = user ? getMainNavItems(user.role) : [];
+
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
-            R
-          </div>
+          {logo ? (
+            <img src={logo} alt={tenantName} className={cn("h-10 w-auto", isCollapsed && "h-8")} />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
+              R
+            </div>
+          )}
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="font-semibold text-sidebar-foreground text-lg">Reuse</span>
+              <span className="font-semibold text-sidebar-foreground text-lg">
+                {tenantName.split(' ')[0] || 'Reuse'}
+              </span>
               <span className="text-xs text-sidebar-foreground/60">ITAD Platform</span>
             </div>
           )}
@@ -78,8 +154,8 @@ export function AppSidebar() {
                     className={cn(
                       "h-11 rounded-lg transition-all duration-200",
                       isActive(item.url) 
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" 
-                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md font-semibold" 
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent hover:shadow-sm"
                     )}
                   >
                     <NavLink to={item.url} className="flex items-center gap-3">
@@ -113,22 +189,33 @@ export function AppSidebar() {
           ))}
           
           {/* User/Org section */}
-          <SidebarMenuItem>
-            <div className={cn(
-              "flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent/50",
-              isCollapsed && "justify-center p-2"
-            )}>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20 text-sidebar-primary">
-                <Building2 className="h-4 w-4" />
-              </div>
-              {!isCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">TechCorp Industries</p>
-                  <p className="text-xs text-sidebar-foreground/60 truncate">Admin User</p>
+          {user && (
+            <>
+              <SidebarMenuItem>
+                <div className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent/50",
+                  isCollapsed && "justify-center p-2"
+                )}>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20 text-sidebar-primary">
+                    <Building2 className="h-4 w-4" />
+                  </div>
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">
+                        {tenantName}
+                      </p>
+                      <p className="text-xs text-sidebar-foreground/60 truncate capitalize">
+                        {user.name} • {user.role}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </SidebarMenuItem>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <LogoutButton isCollapsed={isCollapsed} />
+              </SidebarMenuItem>
+            </>
+          )}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

@@ -24,29 +24,46 @@ import {
   BarChart,
   Bar
 } from "recharts";
-import { mockJobs, assetCategories, co2eEquivalencies, dashboardStats } from "@/lib/mock-data";
-
-// Generate monthly data for charts
-const monthlyData = [
-  { month: "Jul", saved: 45000, travel: 320 },
-  { month: "Aug", saved: 52000, travel: 380 },
-  { month: "Sep", saved: 48000, travel: 290 },
-  { month: "Oct", saved: 61000, travel: 420 },
-  { month: "Nov", saved: 58000, travel: 350 },
-  { month: "Dec", saved: dashboardStats.totalCO2eSaved, travel: 410 },
-];
-
-// Asset category breakdown
-const categoryData = assetCategories.slice(0, 5).map((cat, i) => ({
-  name: cat.name,
-  value: [45, 25, 15, 10, 5][i],
-  color: ["hsl(168, 70%, 35%)", "hsl(168, 60%, 45%)", "hsl(180, 50%, 40%)", "hsl(205, 60%, 45%)", "hsl(38, 95%, 55%)"][i],
-}));
+import { co2eEquivalencies } from "@/lib/constants";
+import { useJobs } from "@/hooks/useJobs";
+import { useAssetCategories } from "@/hooks/useAssets";
+import { useDashboardStats } from "@/hooks/useJobs";
+import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const CO2eDashboard = () => {
-  const totalSaved = dashboardStats.totalCO2eSaved;
-  const totalTravel = mockJobs.reduce((sum, j) => sum + j.travelEmissions, 0);
+  const { data: jobs = [], isLoading: isLoadingJobs } = useJobs();
+  const { data: stats, isLoading: isLoadingStats } = useDashboardStats();
+  const { data: assetCategories = [] } = useAssetCategories();
+
+  // Generate monthly data for charts
+  const monthlyData = [
+    { month: "Jul", saved: 45000, travel: 320 },
+    { month: "Aug", saved: 52000, travel: 380 },
+    { month: "Sep", saved: 48000, travel: 290 },
+    { month: "Oct", saved: 61000, travel: 420 },
+    { month: "Nov", saved: 58000, travel: 350 },
+    { month: "Dec", saved: stats?.totalCO2eSaved || 0, travel: 410 },
+  ];
+
+  // Asset category breakdown
+  const categoryData = assetCategories.slice(0, 5).map((cat, i) => ({
+    name: cat.name,
+    value: [45, 25, 15, 10, 5][i],
+    color: ["hsl(168, 70%, 35%)", "hsl(168, 60%, 45%)", "hsl(180, 50%, 40%)", "hsl(205, 60%, 45%)", "hsl(38, 95%, 55%)"][i],
+  }));
+  
+  const totalSaved = stats?.totalCO2eSaved || 0;
+  const totalTravel = jobs.reduce((sum, j) => sum + j.travelEmissions, 0);
   const netBenefit = totalSaved - totalTravel;
+
+  if (isLoadingJobs || isLoadingStats) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const equivalencies = [
     { 
@@ -308,7 +325,7 @@ const CO2eDashboard = () => {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockJobs.slice(0, 5).map(j => ({
+                <BarChart data={jobs.slice(0, 5).map(j => ({
                   name: j.clientName.split(' ')[0],
                   saved: j.co2eSaved / 1000,
                   travel: j.travelEmissions / 1000

@@ -11,25 +11,44 @@ import {
   Download,
   Leaf,
   Scale,
-  Smartphone
+  Smartphone,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowTimeline } from "@/components/jobs/WorkflowTimeline";
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
-import { mockJobs, assetCategories, co2eEquivalencies } from "@/lib/mock-data";
+import { co2eEquivalencies } from "@/lib/constants";
+import { useJob } from "@/hooks/useJobs";
+import { useAssetCategories } from "@/hooks/useAssets";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 const JobDetail = () => {
   const { id } = useParams();
-  const job = mockJobs.find((j) => j.id === id);
+  const { user } = useAuth();
+  const { data: job, isLoading, error } = useJob(id);
+  const { data: assetCategories } = useAssetCategories();
 
-  if (!job) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground mb-4">Job not found</p>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !job) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>
+            {error ? "Failed to load job details." : "Job not found"}
+          </AlertDescription>
+        </Alert>
         <Button asChild>
-          <Link to="/jobs">Back to Jobs</Link>
+          <Link to="/jobs" className="text-inherit no-underline">Back to Jobs</Link>
         </Button>
       </div>
     );
@@ -47,7 +66,7 @@ const JobDetail = () => {
         className="flex flex-col sm:flex-row sm:items-center gap-4"
       >
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/jobs">
+          <Link to="/jobs" className="text-inherit no-underline">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Jobs
           </Link>
@@ -71,9 +90,9 @@ const JobDetail = () => {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Details */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className={`grid gap-6 ${user?.role === 'driver' ? 'lg:grid-cols-1' : 'lg:grid-cols-3'}`}>
+            {/* Left Column - Details */}
+            <div className={`${user?.role === 'driver' ? '' : 'lg:col-span-2'} space-y-6`}>
           {/* Collection Details */}
           <Card>
             <CardHeader>
@@ -113,12 +132,15 @@ const JobDetail = () => {
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium text-muted-foreground">Driver Assignment</p>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/driver/jobs/${job.id}`}>
-                        <Smartphone className="h-4 w-4 mr-2" />
-                        Driver View
-                      </Link>
-                    </Button>
+                    {/* Only show Driver View button to admin and driver roles */}
+                    {(user?.role === 'admin' || user?.role === 'driver') && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/driver/jobs/${job.id}`} className="text-inherit no-underline">
+                          <Smartphone className="h-4 w-4 mr-2" />
+                          Driver View
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
@@ -152,7 +174,7 @@ const JobDetail = () => {
             <CardContent>
               <div className="space-y-3">
                 {job.assets.map((asset) => {
-                  const category = assetCategories.find((c) => c.id === asset.category);
+                  const category = assetCategories?.find((c) => c.id === asset.category);
                   return (
                     <div
                       key={asset.id}
@@ -187,65 +209,66 @@ const JobDetail = () => {
         </div>
 
         {/* Right Column - Summary */}
-        <div className="space-y-6">
-          {/* CO2e Impact */}
-          <Card className="bg-gradient-eco border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Leaf className="h-4 w-4 text-primary" />
-                Environmental Impact
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">CO₂e Saved</p>
-                <p className="text-2xl font-bold text-success">
-                  {(job.co2eSaved / 1000).toFixed(2)}t
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Travel Emissions</p>
-                <p className="text-lg font-semibold text-destructive">
-                  -{job.travelEmissions}kg
-                </p>
-              </div>
-              <div className="pt-3 border-t">
-                <p className="text-sm text-muted-foreground">Net Benefit</p>
-                <p className="text-2xl font-bold text-primary">
-                  {(netCO2e / 1000).toFixed(2)}t
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ≈ {co2eEquivalencies.treesPlanted(netCO2e)} trees planted
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {user?.role !== 'driver' && (
+          <div className="space-y-6">
+            {/* CO2e Impact */}
+            <Card className="bg-gradient-eco border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Leaf className="h-4 w-4 text-primary" />
+                  Environmental Impact
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">CO₂e Saved</p>
+                  <p className="text-2xl font-bold text-success">
+                    {(job.co2eSaved / 1000).toFixed(2)}t
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Travel Emissions</p>
+                  <p className="text-lg font-semibold text-destructive">
+                    -{job.travelEmissions}kg
+                  </p>
+                </div>
+                <div className="pt-3 border-t">
+                  <p className="text-sm text-muted-foreground">Net Benefit</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {(netCO2e / 1000).toFixed(2)}t
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ≈ {co2eEquivalencies.treesPlanted(netCO2e)} trees planted
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Financial Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Scale className="h-4 w-4" />
-                Financial Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Buyback Value</span>
-                <span className="font-semibold">£{job.buybackValue.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Charity Donation</span>
-                <span className="font-semibold">{job.charityPercent}%</span>
-              </div>
-              <div className="flex justify-between pt-3 border-t">
-                <span className="text-muted-foreground">Your Return</span>
-                <span className="font-bold text-lg">
-                  £{Math.round(job.buybackValue * (1 - job.charityPercent / 100)).toLocaleString()}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Financial Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Scale className="h-4 w-4" />
+                  Financial Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Buyback Value</span>
+                  <span className="font-semibold">£{job.buybackValue.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Charity Donation</span>
+                  <span className="font-semibold">{job.charityPercent}%</span>
+                </div>
+                <div className="flex justify-between pt-3 border-t">
+                  <span className="text-muted-foreground">Your Return</span>
+                  <span className="font-bold text-lg">
+                    £{Math.round(job.buybackValue * (1 - job.charityPercent / 100)).toLocaleString()}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
 
           {/* Certificates */}
           <Card>
@@ -281,7 +304,8 @@ const JobDetail = () => {
               )}
             </CardContent>
           </Card>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

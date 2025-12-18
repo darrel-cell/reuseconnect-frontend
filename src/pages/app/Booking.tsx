@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   Building2, 
   Package, 
@@ -14,24 +15,28 @@ import {
   TreeDeciduous,
   Heart,
   Calendar,
-  MapPin
+  MapPin,
+  Search,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/booking/DatePicker";
 import { MapPicker } from "@/components/booking/MapPicker";
-import { 
-  assetCategories, 
-  calculateReuseCO2e, 
-  calculateBuybackEstimate,
-  calculateTravelEmissions,
-  co2eEquivalencies 
-} from "@/lib/mock-data";
+import { AddressAutocomplete } from "@/components/booking/AddressAutocomplete";
+import { co2eEquivalencies } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSites } from "@/hooks/useSites";
+import { useAssetCategories } from "@/hooks/useAssets";
+import { useCO2Calculation } from "@/hooks/useCO2";
+import { useCreateBooking } from "@/hooks/useBooking";
+import type { Site } from "@/services/site.service";
 
 const steps = [
   { id: 1, title: "Site Details", icon: Building2 },
@@ -45,19 +50,90 @@ interface AssetSelection {
 }
 
 const Booking = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [siteLocation, setSiteLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>("new"); // Default to "Create New Site"
   const [siteDetails, setSiteDetails] = useState({
     siteName: "",
-    address: "",
+    street: "",
+    city: "",
+    county: "",
     postcode: "",
+    country: "United Kingdom",
     contactName: "",
     contactPhone: "",
   });
   const [selectedAssets, setSelectedAssets] = useState<AssetSelection[]>([]);
   const [charityPercent, setCharityPercent] = useState(10);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load sites (for client/reseller roles)
+  const { data: sites = [], isLoading: isLoadingSites } = useSites();
+  const { data: assetCategories = [] } = useAssetCategories();
+  const createBooking = useCreateBooking();
+  
+  // Calculate CO2e when assets change
+  const { data: co2Calculation } = useCO2Calculation(
+    selectedAssets.length > 0
+      ? {
+          assets: selectedAssets,
+          distanceKm: 80,
+          vehicleType: 'van',
+        }
+      : null
+  );
+
+  // Set default site on mount (only if sites exist and we're still on 'new')
+  useEffect(() => {
+    if (sites.length > 0 && selectedSiteId === 'new') {
+      const defaultSite = sites.find(s => s.isDefault);
+      if (defaultSite) {
+        // Don't auto-select, let user choose
+        // Keep "Create New Site" as default
+      }
+    }
+  }, [sites, selectedSiteId]);
+
+  const handleSiteSelect = (siteId: string) => {
+    if (siteId === 'new') {
+      // Reset form for new site
+      setSelectedSiteId('new');
+      setSiteDetails({
+        siteName: "",
+        street: "",
+        city: "",
+        county: "",
+        postcode: "",
+        country: "United Kingdom",
+        contactName: "",
+        contactPhone: "",
+      });
+      setSiteLocation(null);
+      return;
+    }
+
+    const site = sites.find(s => s.id === siteId);
+    if (site) {
+      setSelectedSiteId(siteId);
+      // Parse existing address or use as-is
+      const addressParts = site.address.split(',').map(s => s.trim());
+      setSiteDetails({
+        siteName: site.name,
+        street: addressParts[0] || "",
+        city: addressParts[1] || "",
+        county: addressParts[2] || "",
+        postcode: site.postcode,
+        country: "United Kingdom",
+        contactName: site.contactName || "",
+        contactPhone: site.contactPhone || "",
+      });
+      if (site.coordinates) {
+        setSiteLocation(site.coordinates);
+      }
+    }
+  };
 
   const updateAssetQuantity = (categoryId: string, delta: number) => {
     setSelectedAssets((prev) => {
@@ -82,16 +158,26 @@ const Booking = () => {
   };
 
   const totalAssets = selectedAssets.reduce((sum, a) => sum + a.quantity, 0);
-  const co2eSaved = calculateReuseCO2e(selectedAssets);
-  const buybackEstimate = calculateBuybackEstimate(selectedAssets);
-  const travelEmissions = calculateTravelEmissions(80, "van"); // Assume 80km average
-  const netCO2e = co2eSaved - travelEmissions;
+  
+  // Calculate buyback estimate using asset categories from service
+  const buybackEstimate = assetCategories.length > 0
+    ? selectedAssets.reduce((total, asset) => {
+        const category = assetCategories.find(c => c.id === asset.categoryId);
+        return total + (category?.avgBuybackValue || 0) * asset.quantity;
+      }, 0)
+    : 0;
+  
+  // Use CO2 calculation from service (useCO2Calculation hook)
+  const co2eSaved = co2Calculation?.reuseSavings || 0;
+  const travelEmissions = co2Calculation?.travelEmissions || 0;
+  const netCO2e = co2Calculation?.netImpact || 0;
 
   const canProceed = () => {
     if (currentStep === 1) {
       return (
         siteDetails.siteName &&
-        siteDetails.address &&
+        siteDetails.street &&
+        siteDetails.city &&
         siteDetails.postcode &&
         scheduledDate !== undefined
       );
@@ -103,20 +189,43 @@ const Booking = () => {
   };
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 2000));
-    toast.success("Booking submitted successfully!", {
-      description: "You will receive a confirmation email shortly.",
-    });
-    setIsSubmitting(false);
-    // Reset form
-    setCurrentStep(1);
-    setScheduledDate(undefined);
-    setSiteLocation(null);
-    setSiteDetails({ siteName: "", address: "", postcode: "", contactName: "", contactPhone: "" });
-    setSelectedAssets([]);
-    setCharityPercent(10);
+    if (!scheduledDate) return;
+    
+    // Combine address parts
+    const fullAddress = [
+      siteDetails.street,
+      siteDetails.city,
+      siteDetails.county,
+      siteDetails.country
+    ].filter(Boolean).join(', ');
+    
+    createBooking.mutate(
+      {
+        siteId: selectedSiteId || undefined,
+        siteName: siteDetails.siteName,
+        address: fullAddress,
+        postcode: siteDetails.postcode,
+        contactName: siteDetails.contactName,
+        contactPhone: siteDetails.contactPhone,
+        scheduledDate: scheduledDate.toISOString(),
+        assets: selectedAssets,
+        charityPercent,
+        coordinates: siteLocation || undefined,
+      },
+      {
+        onSuccess: (booking) => {
+          toast.success("Booking submitted successfully!", {
+            description: `Job ${booking.erpJobNumber} has been created.`,
+          });
+          navigate(`/jobs/${booking.id}`);
+        },
+        onError: (error) => {
+          toast.error("Failed to create booking", {
+            description: error instanceof Error ? error.message : "Please try again.",
+          });
+        },
+      }
+    );
   };
 
   return (
@@ -132,7 +241,7 @@ const Booking = () => {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-full transition-all",
                 currentStep >= step.id
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-success/70"
                   : "bg-secondary text-muted-foreground"
               )}
             >
@@ -144,7 +253,7 @@ const Booking = () => {
               <div
                 className={cn(
                   "w-12 h-0.5 mx-2",
-                  currentStep > step.id ? "bg-primary" : "bg-border"
+                  currentStep > step.id ? "bg-success" : "bg-border"
                 )}
               />
             )}
@@ -161,15 +270,62 @@ const Booking = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Left Column - Form Fields */}
+              <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Collection Site Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="siteName">Site Name *</Label>
+                  {/* Site Selection for Client/Reseller */}
+                  {user && (user.role === 'client' || user.role === 'reseller' || user.role === 'admin') && sites.length > 0 && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">Site Selection</Label>
+                        {selectedSiteId === 'new' && (
+                          <span className="text-xs text-green-600 dark:text-green-400">● Creating New</span>
+                        )}
+                        {selectedSiteId !== 'new' && (
+                          <span className="text-xs text-blue-600 dark:text-blue-400">● Loaded</span>
+                        )}
+                      </div>
+                      {isLoadingSites ? (
+                        <div className="flex items-center justify-center py-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <Select
+                          value={selectedSiteId}
+                          onValueChange={handleSiteSelect}
+                        >
+                          <SelectTrigger className="bg-background h-9">
+                            <SelectValue placeholder="Choose a site or create new" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">
+                              <div className="flex items-center gap-2">
+                                <Plus className="h-4 w-4" />
+                                <span>Create New Site</span>
+                              </div>
+                            </SelectItem>
+                            {sites.map((site) => (
+                              <SelectItem key={site.id} value={site.id}>
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4" />
+                                  <span>{site.name} - {site.postcode}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="siteName" className="text-sm">Site Name *</Label>
                       <Input
                         id="siteName"
                         placeholder="e.g., London HQ"
@@ -177,46 +333,99 @@ const Booking = () => {
                         onChange={(e) =>
                           setSiteDetails({ ...siteDetails, siteName: e.target.value })
                         }
+                        disabled={selectedSiteId && selectedSiteId !== 'new'}
+                        className="h-9"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="scheduledDate">
-                        <Calendar className="inline h-4 w-4 mr-2" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="scheduledDate" className="text-sm">
+                        <Calendar className="inline h-3 w-3 mr-1" />
                         Scheduled Date *
                       </Label>
                       <DatePicker
                         date={scheduledDate}
                         onDateChange={setScheduledDate}
-                        placeholder="Select collection date"
+                        placeholder="Pick date"
                         minDate={new Date()}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Full Address *</Label>
-                    <Input
-                      id="address"
-                      placeholder="Street address, city"
-                      value={siteDetails.address}
-                      onChange={(e) =>
-                        setSiteDetails({ ...siteDetails, address: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="postcode">Postcode *</Label>
-                      <Input
-                        id="postcode"
-                        placeholder="e.g., EC1A 1BB"
-                        value={siteDetails.postcode}
-                        onChange={(e) =>
-                          setSiteDetails({ ...siteDetails, postcode: e.target.value })
-                        }
-                      />
+                  
+                  <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase">Address (use map search or enter manually)</Label>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="street" className="text-sm">Street *</Label>
+                        <Input
+                          id="street"
+                          placeholder="123 High Street"
+                          value={siteDetails.street}
+                          onChange={(e) =>
+                            setSiteDetails({ ...siteDetails, street: e.target.value })
+                          }
+                          disabled={selectedSiteId && selectedSiteId !== 'new'}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="city" className="text-sm">City *</Label>
+                        <Input
+                          id="city"
+                          placeholder="London"
+                          value={siteDetails.city}
+                          onChange={(e) =>
+                            setSiteDetails({ ...siteDetails, city: e.target.value })
+                          }
+                          disabled={selectedSiteId && selectedSiteId !== 'new'}
+                          className="h-9"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="contactName">Contact Name</Label>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="county" className="text-sm">County</Label>
+                        <Input
+                          id="county"
+                          placeholder="Greater London"
+                          value={siteDetails.county}
+                          onChange={(e) =>
+                            setSiteDetails({ ...siteDetails, county: e.target.value })
+                          }
+                          disabled={selectedSiteId && selectedSiteId !== 'new'}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="postcode" className="text-sm">Postcode *</Label>
+                        <Input
+                          id="postcode"
+                          placeholder="EC1A 1BB"
+                          value={siteDetails.postcode}
+                          onChange={(e) =>
+                            setSiteDetails({ ...siteDetails, postcode: e.target.value })
+                          }
+                          disabled={selectedSiteId && selectedSiteId !== 'new'}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="country" className="text-sm">Country</Label>
+                        <Input
+                          id="country"
+                          value={siteDetails.country}
+                          onChange={(e) =>
+                            setSiteDetails({ ...siteDetails, country: e.target.value })
+                          }
+                          disabled={selectedSiteId && selectedSiteId !== 'new'}
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="contactName" className="text-sm">Contact Name</Label>
                       <Input
                         id="contactName"
                         placeholder="Site contact person"
@@ -224,55 +433,71 @@ const Booking = () => {
                         onChange={(e) =>
                           setSiteDetails({ ...siteDetails, contactName: e.target.value })
                         }
+                        disabled={selectedSiteId && selectedSiteId !== 'new'}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="contactPhone" className="text-sm">Contact Phone</Label>
+                      <Input
+                        id="contactPhone"
+                        placeholder="+44 ..."
+                        value={siteDetails.contactPhone}
+                        onChange={(e) =>
+                          setSiteDetails({ ...siteDetails, contactPhone: e.target.value })
+                        }
+                        disabled={selectedSiteId && selectedSiteId !== 'new'}
+                        className="h-9"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Contact Phone</Label>
-                    <Input
-                      id="contactPhone"
-                      placeholder="+44 ..."
-                      value={siteDetails.contactPhone}
-                      onChange={(e) =>
-                        setSiteDetails({ ...siteDetails, contactPhone: e.target.value })
-                      }
-                    />
-                  </div>
                 </CardContent>
               </Card>
+              </div>
 
-              {/* Map Picker */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Select Location on Map
+              {/* Right Column - Map */}
+              <div className="space-y-4">
+              <Card className="sticky top-4">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <MapPin className="h-4 w-4" />
+                    Search Address or Select on Map
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Search or click on the map to auto-fill address fields
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <MapPicker
                     position={siteLocation}
                     onPositionChange={(position) => {
+                      // Allow position change always (don't check for existing address)
                       setSiteLocation(position);
-                      // Optionally update address from reverse geocoding
-                      if (position && !siteDetails.address) {
-                        // Could add reverse geocoding here if needed
+                    }}
+                    onAddressDetailsChange={(details) => {
+                      // Only auto-fill if creating new site
+                      if (selectedSiteId === 'new' || !selectedSiteId) {
+                        setSiteDetails({
+                          ...siteDetails,
+                          street: details.street || siteDetails.street,
+                          city: details.city || siteDetails.city,
+                          county: details.county || siteDetails.county,
+                          postcode: details.postcode || siteDetails.postcode,
+                          country: details.country || siteDetails.country,
+                        });
                       }
                     }}
-                    onAddressChange={(address) => {
-                      if (address && !siteDetails.address) {
-                        setSiteDetails({ ...siteDetails, address });
-                      }
-                    }}
-                    height="350px"
+                    height="450px"
                   />
                   {siteLocation && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Location selected. You can adjust the marker by clicking on the map.
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Location set at {siteLocation.lat.toFixed(4)}, {siteLocation.lng.toFixed(4)}
                     </p>
                   )}
                 </CardContent>
               </Card>
+              </div>
             </div>
           </motion.div>
         )}
@@ -408,18 +633,18 @@ const Booking = () => {
                   <CardTitle className="text-base">Collection Summary</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Site</span>
-                    <span className="font-medium">{siteDetails.siteName}</span>
+                    <span className="font-semibold text-foreground">{siteDetails.siteName}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Location</span>
-                    <span className="font-medium">{siteDetails.postcode}</span>
+                    <span className="font-semibold text-foreground">{siteDetails.postcode}</span>
                   </div>
                   {scheduledDate && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Scheduled Date</span>
-                      <span className="font-medium">
+                      <span className="font-semibold text-foreground">
                         {scheduledDate.toLocaleDateString("en-GB", {
                           weekday: "short",
                           day: "numeric",
@@ -429,17 +654,17 @@ const Booking = () => {
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Assets</span>
-                    <span className="font-medium">{totalAssets} units</span>
+                    <span className="font-semibold text-foreground">{totalAssets} units</span>
                   </div>
                   <div className="pt-3 border-t">
                     {selectedAssets.map((asset) => {
                       const cat = assetCategories.find((c) => c.id === asset.categoryId);
                       return (
                         <div key={asset.categoryId} className="flex justify-between text-sm py-1">
-                          <span>{cat?.icon} {cat?.name}</span>
-                          <span>{asset.quantity}</span>
+                          <span className="text-muted-foreground">{cat?.icon} {cat?.name}</span>
+                          <span className="font-semibold text-foreground">{asset.quantity}</span>
                         </div>
                       );
                     })}
@@ -456,11 +681,11 @@ const Booking = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Estimated Buyback</span>
-                    <span className="text-xl font-bold">£{buybackEstimate.toLocaleString()}</span>
+                    <span className="text-sm text-muted-foreground">Estimated Buyback</span>
+                    <span className="text-xl font-bold text-foreground">£{buybackEstimate.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Net CO₂e Benefit</span>
+                    <span className="text-sm text-muted-foreground">Net CO₂e Benefit</span>
                     <span className="text-xl font-bold text-success">
                       {(netCO2e / 1000).toFixed(1)}t
                     </span>
@@ -490,10 +715,10 @@ const Booking = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                       Donate a percentage of your buyback to charity
                     </span>
-                    <span className="text-xl font-bold">{charityPercent}%</span>
+                    <span className="text-xl font-bold text-foreground">{charityPercent}%</span>
                   </div>
                   <Slider
                     value={[charityPercent]}
@@ -504,10 +729,10 @@ const Booking = () => {
                   />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      Charity: £{Math.round(buybackEstimate * (charityPercent / 100)).toLocaleString()}
+                      Charity: <span className="font-semibold text-foreground">£{Math.round(buybackEstimate * (charityPercent / 100)).toLocaleString()}</span>
                     </span>
-                    <span className="font-medium">
-                      Your Return: £{Math.round(buybackEstimate * (1 - charityPercent / 100)).toLocaleString()}
+                    <span className="text-muted-foreground">
+                      Your Return: <span className="font-semibold text-foreground">£{Math.round(buybackEstimate * (1 - charityPercent / 100)).toLocaleString()}</span>
                     </span>
                   </div>
                 </div>
@@ -530,6 +755,7 @@ const Booking = () => {
 
         {currentStep < 3 ? (
           <Button
+          variant="outline"
             onClick={() => setCurrentStep((s) => s + 1)}
             disabled={!canProceed()}
           >
@@ -538,12 +764,15 @@ const Booking = () => {
           </Button>
         ) : (
           <Button
-            variant="hero"
+            variant="outline"
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={createBooking.isPending}
           >
-            {isSubmitting ? (
-              "Submitting..."
+            {createBooking.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
             ) : (
               <>
                 <CheckCircle2 className="h-4 w-4 mr-2" />

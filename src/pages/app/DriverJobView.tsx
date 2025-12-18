@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
   MapPin, 
@@ -9,7 +9,8 @@ import {
   Camera,
   PenTool,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,33 +20,80 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoCapture } from "@/components/driver/PhotoCapture";
 import { SignatureCapture } from "@/components/driver/SignatureCapture";
-import { mockJobs } from "@/lib/mock-data";
 import { toast } from "sonner";
+import { useJob, useUpdateJobEvidence, useUpdateJobStatus } from "@/hooks/useJobs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { WorkflowStatus } from "@/types/jobs";
 
 const DriverJobView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const job = mockJobs.find((j) => j.id === id);
+  const { data: job, isLoading } = useJob(id);
+  const updateEvidence = useUpdateJobEvidence();
+  const updateStatus = useUpdateJobStatus();
 
-  const [photos, setPhotos] = useState<string[]>(job?.evidence?.photos || []);
-  const [signature, setSignature] = useState<string | null>(
-    job?.evidence?.signature && job.evidence.signature !== "collected" 
-      ? job.evidence.signature 
-      : null
-  );
-  const [sealNumbers, setSealNumbers] = useState<string[]>(
-    job?.evidence?.sealNumbers || []
-  );
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [sealNumbers, setSealNumbers] = useState<string[]>([]);
   const [newSealNumber, setNewSealNumber] = useState("");
-  const [notes, setNotes] = useState(job?.evidence?.notes || "");
-  const [isSaving, setIsSaving] = useState(false);
+  const [notes, setNotes] = useState("");
+
+  // Initialize state from job data
+  useEffect(() => {
+    if (job?.evidence) {
+      setPhotos(job.evidence.photos || []);
+      setSignature(
+        job.evidence.signature && job.evidence.signature !== "collected"
+          ? job.evidence.signature
+          : null
+      );
+      setSealNumbers(job.evidence.sealNumbers || []);
+      setNotes(job.evidence.notes || "");
+    }
+  }, [job]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 px-4">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!job) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
-        <p className="text-muted-foreground mb-4">Job not found</p>
+      <div className="flex flex-col items-center justify-center py-12 px-4 space-y-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>Job not found</AlertDescription>
+        </Alert>
+        <Button onClick={() => navigate("/jobs")}>Back to Jobs</Button>
+      </div>
+    );
+  }
+
+  // Check if driver can access this job (only before/at collection stage)
+  const canAccess = job.status === 'booked' ||
+    job.status === 'en-route' ||
+    job.status === 'collected';
+
+  // Access restriction: Drivers can only access jobs before/at collection
+  if (!canAccess) {
+    return (
+      <div className="space-y-6 max-w-2xl mx-auto px-4 py-12">
+        <Alert variant="destructive">
+          <AlertDescription>
+            <strong>Access Restricted</strong>
+            <p className="mt-2">
+              This job has progressed beyond the collection stage. Drivers can only access jobs that are booked, en-route, or recently collected.
+              Current status: {job.status}
+            </p>
+            <p className="mt-2 text-sm">
+              For post-collection information, please contact your supervisor.
+            </p>
+          </AlertDescription>
+        </Alert>
         <Button asChild>
-          <button onClick={() => navigate("/jobs")}>Back to Jobs</button>
+          <Link to="/jobs" className="text-inherit no-underline">Back to Jobs</Link>
         </Button>
       </div>
     );
@@ -63,20 +111,67 @@ const DriverJobView = () => {
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // In a real app, this would update the job's evidence
-    toast.success("Evidence saved successfully!", {
-      description: "Photos, signature, and notes have been recorded.",
-    });
-    
-    setIsSaving(false);
+    if (!id) return;
+
+    updateEvidence.mutate(
+      {
+        jobId: id,
+        evidence: {
+          photos,
+          signature: signature || undefined,
+          sealNumbers,
+          notes: notes || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Evidence saved successfully!", {
+            description: "Photos, signature, and notes have been recorded.",
+          });
+        },
+        onError: (error) => {
+          toast.error("Failed to save evidence", {
+            description: error instanceof Error ? error.message : "Please try again.",
+          });
+        },
+      }
+    );
   };
 
   const canSave = photos.length > 0 || signature || sealNumbers.length > 0;
+
+  // Get next valid status for driver workflow
+  const getNextStatus = (): WorkflowStatus | null => {
+    if (!job) return null;
+    const statusTransitions: Record<string, WorkflowStatus> = {
+      'booked': 'en-route',      // Accept job
+      'en-route': 'collected',   // Mark as arrived and collected
+      'collected': 'warehouse',   // Mark as delivered to warehouse
+    };
+    return statusTransitions[job.status] || null;
+  };
+
+  const nextStatus = getNextStatus();
+
+  const handleStatusUpdate = async (newStatus: WorkflowStatus) => {
+    if (!id) return;
+
+    updateStatus.mutate(
+      { jobId: id, status: newStatus },
+      {
+        onSuccess: () => {
+          toast.success("Job status updated successfully!", {
+            description: `Job status changed to ${newStatus}.`,
+          });
+        },
+        onError: (error) => {
+          toast.error("Failed to update job status", {
+            description: error instanceof Error ? error.message : "Please try again.",
+          });
+        },
+      }
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -241,17 +336,50 @@ const DriverJobView = () => {
           </CardContent>
         </Card>
 
+        {/* Status Update (if applicable) */}
+        {nextStatus && (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground mb-1">Update Job Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    Mark this job as {nextStatus} to progress the workflow
+                  </p>
+                </div>
+                <Button
+                  onClick={() => handleStatusUpdate(nextStatus)}
+                  disabled={updateStatus.isPending}
+                  size="lg"
+                >
+                  {updateStatus.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Mark as {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Save Button - Fixed at bottom on mobile */}
         <div className="sticky bottom-0 bg-background border-t pt-4 pb-4 -mx-4 px-4">
           <Button
             onClick={handleSave}
-            disabled={!canSave || isSaving}
+            disabled={!canSave || updateEvidence.isPending}
             className="w-full"
             size="lg"
           >
-            {isSaving ? (
+            {updateEvidence.isPending ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                 Saving...
               </>
             ) : (

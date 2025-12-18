@@ -1,13 +1,16 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockJobs, statusConfig } from "@/lib/mock-data";
+import { statusConfig } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useJobs } from "@/hooks/useJobs";
 
 export function RecentJobsTable() {
-  const recentJobs = mockJobs.slice(0, 5);
+  const { data: jobs, isLoading } = useJobs({ limit: 5 });
+  
+  const recentJobs = jobs || [];
 
   return (
     <motion.div
@@ -29,7 +32,16 @@ export function RecentJobsTable() {
       </div>
 
       <div className="space-y-3">
-        {recentJobs.map((job, index) => {
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : recentJobs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">No recent jobs found</p>
+          </div>
+        ) : (
+          recentJobs.map((job, index) => {
           const status = statusConfig[job.status];
           return (
             <Link
@@ -70,7 +82,8 @@ export function RecentJobsTable() {
               <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </Link>
           );
-        })}
+        })
+        )}
       </div>
     </motion.div>
   );

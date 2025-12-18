@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import { MapPin, Search } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { MapPin, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -19,20 +21,98 @@ interface MapPickerProps {
   position: { lat: number; lng: number } | null;
   onPositionChange: (position: { lat: number; lng: number } | null) => void;
   onAddressChange?: (address: string) => void;
+  onAddressDetailsChange?: (details: {
+    street?: string;
+    city?: string;
+    county?: string;
+    postcode?: string;
+    country?: string;
+  }) => void;
   height?: string;
 }
 
-// Component to handle map clicks
+interface GeocodeResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    road?: string;
+    house_number?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+  };
+}
+
+// Component to handle map clicks and reverse geocoding
 function MapClickHandler({
   onPositionChange,
+  onAddressChange,
+  onAddressDetailsChange,
 }: {
   onPositionChange: (position: { lat: number; lng: number }) => void;
+  onAddressChange?: (address: string) => void;
+  onAddressDetailsChange?: (details: {
+    street?: string;
+    city?: string;
+    county?: string;
+    postcode?: string;
+    country?: string;
+  }) => void;
 }) {
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
   useMapEvents({
-    click: (e) => {
-      onPositionChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+    click: async (e) => {
+      const newPosition = { lat: e.latlng.lat, lng: e.latlng.lng };
+      onPositionChange(newPosition);
+
+      // Reverse geocoding
+      if (onAddressChange || onAddressDetailsChange) {
+        setIsGeocoding(true);
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPosition.lat}&lon=${newPosition.lng}&zoom=18&addressdetails=1`
+          );
+          const data = await response.json();
+          if (data.display_name && onAddressChange) {
+            onAddressChange(data.display_name);
+          }
+          if (data.address && onAddressDetailsChange) {
+            onAddressDetailsChange({
+              street: data.address.road || data.address.house_number ? `${data.address.house_number || ''} ${data.address.road || ''}`.trim() : "",
+              city: data.address.city || data.address.town || data.address.village || "",
+              county: data.address.county || data.address.state || "",
+              postcode: data.address.postcode || "",
+              country: data.address.country || "United Kingdom",
+            });
+          }
+        } catch (error) {
+          console.error("Reverse geocoding error:", error);
+        } finally {
+          setIsGeocoding(false);
+        }
+      }
     },
   });
+
+  return null;
+}
+
+// Component to update map center when position changes
+function MapCenterUpdater({ position }: { position: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (position) {
+      map.setView([position.lat, position.lng], 15);
+    }
+  }, [position, map]);
+
   return null;
 }
 
@@ -40,20 +120,81 @@ export function MapPicker({
   position,
   onPositionChange,
   onAddressChange,
+  onAddressDetailsChange,
   height = "400px",
 }: MapPickerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const defaultCenter: [number, number] = [51.5074, -0.1278]; // London default
 
-  // Geocoding function (using Nominatim OpenStreetMap API)
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Debounced search for autocomplete
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchQuery.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&addressdetails=1`
+        );
+        const data = await response.json();
+        setSuggestions(data);
+        if (data.length > 0) {
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+  }, [searchQuery]);
+
+  const handleSelectSuggestion = async (suggestion: GeocodeResult) => {
+    setSearchQuery(suggestion.display_name);
+    setShowSuggestions(false);
+    const newPosition = {
+      lat: parseFloat(suggestion.lat),
+      lng: parseFloat(suggestion.lon),
+    };
+    onPositionChange(newPosition);
+    if (onAddressChange) {
+      onAddressChange(suggestion.display_name);
+    }
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`
       );
       const data = await response.json();
 
@@ -67,6 +208,7 @@ export function MapPicker({
         if (onAddressChange) {
           onAddressChange(result.display_name);
         }
+        setSearchQuery(result.display_name);
       }
     } catch (error) {
       console.error("Geocoding error:", error);
@@ -81,34 +223,77 @@ export function MapPicker({
 
   return (
     <div className="space-y-3">
-      {/* Search Bar */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Search for an address or location..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSearch();
-            }
-          }}
-          className="flex-1"
-        />
-        <Button
-          onClick={handleSearch}
-          disabled={isSearching || !searchQuery.trim()}
-          type="button"
-        >
-          <Search className="h-4 w-4 mr-2" />
-          {isSearching ? "Searching..." : "Search"}
-        </Button>
+      {/* Search Bar with Autocomplete */}
+      <div className="relative">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+            <Input
+              placeholder="Search for an address or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            onClick={handleSearch}
+            disabled={isSearching || !searchQuery.trim()}
+            type="button"
+          >
+            {isSearching ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4 mr-2" />
+            )}
+            {isSearching ? "Searching..." : "Search"}
+          </Button>
+        </div>
+
+        {/* Autocomplete Suggestions */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div 
+            ref={suggestionsRef}
+            className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto"
+          >
+            {suggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                className="px-4 py-2 hover:bg-secondary cursor-pointer transition-colors"
+                onClick={() => handleSelectSuggestion(suggestion)}
+              >
+                <p className="text-sm font-medium">{suggestion.display_name}</p>
+                {suggestion.address && (
+                  <p className="text-xs text-muted-foreground">
+                    {suggestion.address.road && `${suggestion.address.road}, `}
+                    {suggestion.address.city && `${suggestion.address.city}, `}
+                    {suggestion.address.postcode}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Map */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div style={{ height, width: "100%" }}>
+          <div style={{ height, width: "100%", position: "relative" }}>
+            {isGeocoding && (
+              <div className="absolute top-2 right-2 z-[1000] bg-card border border-border rounded-lg px-3 py-2 shadow-lg flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm">Getting address...</span>
+              </div>
+            )}
             <MapContainer
               center={currentCenter}
               zoom={position ? 15 : 10}
@@ -119,7 +304,12 @@ export function MapPicker({
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <MapClickHandler onPositionChange={onPositionChange} />
+              <MapClickHandler 
+                onPositionChange={onPositionChange} 
+                onAddressChange={onAddressChange}
+                onAddressDetailsChange={onAddressDetailsChange}
+              />
+              <MapCenterUpdater position={position} />
               {position && (
                 <Marker position={[position.lat, position.lng]} />
               )}
@@ -146,4 +336,3 @@ export function MapPicker({
     </div>
   );
 }
-

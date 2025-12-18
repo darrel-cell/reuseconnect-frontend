@@ -1,0 +1,216 @@
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowLeft, Award, Download, PoundSterling, Loader2, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useBooking } from "@/hooks/useBookings";
+import { useGradingRecords } from "@/hooks/useGrading";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+
+const grades: { value: 'A' | 'B' | 'C' | 'D' | 'Recycled'; label: string; color: string }[] = [
+  { value: 'A', label: 'Grade A - Excellent', color: 'bg-success/10 text-success' },
+  { value: 'B', label: 'Grade B - Good', color: 'bg-info/10 text-info' },
+  { value: 'C', label: 'Grade C - Fair', color: 'bg-warning/10 text-warning' },
+  { value: 'D', label: 'Grade D - Poor', color: 'bg-destructive/10 text-destructive' },
+  { value: 'Recycled', label: 'Recycled', color: 'bg-muted text-muted-foreground' },
+];
+
+const BookingGradingReport = () => {
+  const { id } = useParams();
+  const { data: booking, isLoading: isLoadingBooking } = useBooking(id || null);
+  const { data: records = [], isLoading: isLoadingRecords } = useGradingRecords(id);
+
+  if (isLoadingBooking || isLoadingRecords) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertDescription>Booking not found</AlertDescription>
+        </Alert>
+        <Button asChild>
+          <Link to="/bookings" className="text-inherit no-underline">Back to Bookings</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (booking.status !== 'graded' && booking.status !== 'completed') {
+    return (
+      <div className="space-y-6">
+        <Alert>
+          <AlertDescription>
+            Grading report will be available after assets are graded.
+            Current status: {booking.status}
+          </AlertDescription>
+        </Alert>
+        <Button asChild>
+          <Link to={`/bookings/${id}`} className="text-inherit no-underline">Back to Booking</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Group records by asset
+  const recordsByAsset = records.reduce((acc, record) => {
+    if (!acc[record.assetId]) {
+      acc[record.assetId] = [];
+    }
+    acc[record.assetId].push(record);
+    return acc;
+  }, {} as Record<string, typeof records>);
+
+  const totalResaleValue = records.reduce((sum, r) => {
+    const asset = booking.assets.find(a => a.categoryId === r.assetId);
+    return sum + (r.resaleValue * (asset?.quantity || 1));
+  }, 0);
+
+  const totalAssets = booking.assets.reduce((sum, a) => sum + a.quantity, 0);
+  const gradedAssets = records.length;
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to={`/bookings/${id}`} className="text-inherit no-underline">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Asset Grading Report</h2>
+            <p className="text-muted-foreground">{booking.bookingNumber} - {booking.clientName}</p>
+          </div>
+        </div>
+        <Button variant="outline" asChild>
+          <a href="#" download>
+            <Download className="h-4 w-4 mr-2" />
+            Download Report
+          </a>
+        </Button>
+      </motion.div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Assets</p>
+                <p className="text-2xl font-bold">{totalAssets}</p>
+              </div>
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Graded Assets</p>
+                <p className="text-2xl font-bold">{gradedAssets}</p>
+              </div>
+              <Award className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Resale Value</p>
+                <p className="text-2xl font-bold">£{totalResaleValue.toLocaleString()}</p>
+              </div>
+              <PoundSterling className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Grading Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Asset Grades</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {records.length === 0 ? (
+            <div className="text-center py-12">
+              <Award className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <p className="text-muted-foreground">No grading records available</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {booking.assets.map((asset) => {
+                const assetRecord = recordsByAsset[asset.categoryId]?.[0];
+
+                if (!assetRecord) return null;
+
+                const gradeInfo = grades.find(g => g.value === assetRecord.grade);
+                const totalValue = assetRecord.resaleValue * asset.quantity;
+
+                return (
+                  <div
+                    key={asset.categoryId}
+                    className="flex items-start justify-between p-4 rounded-lg border bg-muted/50"
+                  >
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Award className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-semibold">{asset.categoryName}</span>
+                        <Badge variant="secondary">{asset.quantity} units</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn("text-sm", gradeInfo?.color)}>
+                          Grade {assetRecord.grade}
+                        </Badge>
+                        {assetRecord.condition && (
+                          <span className="text-sm text-muted-foreground">
+                            {assetRecord.condition}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p>
+                          <span className="text-muted-foreground">Per Unit:</span> <span className="font-medium text-foreground">£{assetRecord.resaleValue.toLocaleString()}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Total Value:</span> <span className="font-semibold text-foreground">£{totalValue.toLocaleString()}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Graded:</span> <span className="text-foreground">{new Date(assetRecord.gradedAt).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}</span>
+                        </p>
+                        {assetRecord.notes && (
+                          <p className="text-xs"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{assetRecord.notes}</span></p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default BookingGradingReport;
+

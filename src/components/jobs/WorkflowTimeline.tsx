@@ -1,21 +1,36 @@
-import { WorkflowStatus } from "@/lib/mock-data";
+import type { WorkflowStatus } from "@/types/jobs";
 import { cn } from "@/lib/utils";
-import { Check, Circle } from "lucide-react";
+import { 
+  CheckCircle2, 
+  Calendar, 
+  MapPin, 
+  Truck, 
+  Package, 
+  Shield, 
+  Award, 
+  FileCheck 
+} from "lucide-react";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 
 interface WorkflowTimelineProps {
   currentStatus: WorkflowStatus;
 }
 
-const workflowSteps: { status: WorkflowStatus; label: string }[] = [
-  { status: "booked", label: "Booked" },
-  { status: "routed", label: "Routed" },
-  { status: "en-route", label: "En Route" },
-  { status: "collected", label: "Collected" },
-  { status: "warehouse", label: "Warehouse" },
-  { status: "sanitised", label: "Sanitised" },
-  { status: "graded", label: "Graded" },
-  { status: "finalised", label: "Finalised" },
+const workflowSteps: { 
+  status: WorkflowStatus; 
+  label: string; 
+  icon: typeof CheckCircle2;
+  description: string;
+}[] = [
+  { status: "booked", label: "Booked", icon: Calendar, description: "Job booking confirmed" },
+  { status: "routed", label: "Routed", icon: MapPin, description: "Route assigned to driver" },
+  { status: "en-route", label: "En Route", icon: Truck, description: "Driver traveling to site" },
+  { status: "collected", label: "Collected", icon: Package, description: "Assets collected from site" },
+  { status: "warehouse", label: "Warehouse", icon: Package, description: "Assets at processing facility" },
+  { status: "sanitised", label: "Sanitised", icon: Shield, description: "Data sanitisation completed" },
+  { status: "graded", label: "Graded", icon: Award, description: "Assets graded for resale" },
+  { status: "finalised", label: "Finalised", icon: FileCheck, description: "Job completed" },
 ];
 
 export function WorkflowTimeline({ currentStatus }: WorkflowTimelineProps) {
@@ -23,7 +38,7 @@ export function WorkflowTimeline({ currentStatus }: WorkflowTimelineProps) {
 
   return (
     <div className="py-4">
-      <div className="flex items-center justify-between relative">
+      <div className="relative flex items-center justify-between">
         {/* Progress line background */}
         <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-border -translate-y-1/2 mx-6" />
         
@@ -38,7 +53,7 @@ export function WorkflowTimeline({ currentStatus }: WorkflowTimelineProps) {
         {workflowSteps.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
-          const isPending = index > currentIndex;
+          const Icon = step.icon;
 
           return (
             <motion.div
@@ -46,30 +61,48 @@ export function WorkflowTimeline({ currentStatus }: WorkflowTimelineProps) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="flex flex-col items-center relative z-10"
+              className="flex flex-col items-center relative z-10 group"
             >
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
-                  isCompleted && "bg-primary text-primary-foreground",
-                  isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                  isPending && "bg-background border-2 border-border text-muted-foreground"
-                )}
-              >
+              {/* Icon */}
+              <div className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all mb-2",
+                isCompleted || isCurrent
+                  ? "border-primary bg-primary/10"
+                  : "border-muted bg-muted"
+              )}>
                 {isCompleted ? (
-                  <Check className="h-4 w-4" />
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
                 ) : (
-                  <Circle className={cn("h-3 w-3", isCurrent && "fill-current")} />
+                  <Icon className={cn("h-5 w-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
                 )}
               </div>
-              <span
-                className={cn(
-                  "text-xs mt-2 font-medium text-center w-16",
-                  (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
+
+              {/* Label */}
+              <span className={cn(
+                "text-xs font-medium text-center mb-1",
+                (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
+              )}>
                 {step.label}
               </span>
+
+              {/* Status Badge */}
+              {isCurrent && (
+                <Badge className="bg-warning/20 text-warning text-xs px-2 py-0">
+                  Current
+                </Badge>
+              )}
+              {isCompleted && (
+                <Badge variant="outline" className="bg-success/10 text-success text-xs px-2 py-0">
+                  Done
+                </Badge>
+              )}
+
+              {/* Tooltip with description on hover */}
+              <div className="absolute top-full mt-2 hidden group-hover:block z-20">
+                <div className="bg-popover text-popover-foreground text-xs rounded-md shadow-lg p-2 whitespace-nowrap border">
+                  {step.description}
+                </div>
+              </div>
             </motion.div>
           );
         })}

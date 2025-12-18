@@ -1,12 +1,25 @@
 import { motion } from "framer-motion";
-import { Leaf, TreeDeciduous, Home, Car } from "lucide-react";
-import { dashboardStats, co2eEquivalencies } from "@/lib/mock-data";
+import { Leaf, TreeDeciduous, Home, Car, Loader2 } from "lucide-react";
+import { co2eEquivalencies } from "@/lib/constants";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useJobs";
 
 export function CO2eOverview() {
-  const totalCO2e = dashboardStats.totalCO2eSaved;
+  const { data: stats, isLoading } = useDashboardStats();
+  
+  if (isLoading || !stats) {
+    return (
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  const totalCO2e = stats.totalCO2eSaved;
   const trees = co2eEquivalencies.treesPlanted(totalCO2e);
   const householdDays = co2eEquivalencies.householdDays(totalCO2e);
   const carMiles = co2eEquivalencies.carMiles(totalCO2e);
@@ -41,8 +54,8 @@ export function CO2eOverview() {
             <p className="text-sm text-primary-foreground/70">CO₂e saved through reuse</p>
           </div>
           <Button variant="glass" size="sm" asChild className="text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/10">
-            <Link to="/co2e" className="gap-1">
-              Full Report <ArrowRight className="h-4 w-4" />
+            <Link to="/co2e" className="gap-1 group relative bg-white/10 backdrop-blur-sm text-foreground hover:bg-white/20 hover:border-white/50 hover:shadow-lg hover:shadow-accent/20 transition-all duration-300 ease-out active:scale-[0.98]">
+              Full Report <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"/>
             </Link>
           </Button>
         </div>

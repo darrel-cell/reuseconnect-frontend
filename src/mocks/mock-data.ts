@@ -1,0 +1,268 @@
+// Mock data for the Reuse ITAD Platform Demo
+// This file contains ONLY mock data - no utilities, constants, or calculation functions
+// Types are defined in @/types/jobs.ts
+// UI constants are in @/lib/constants.ts
+// Calculation utilities are in @/lib/calculations.ts
+import type { Job, AssetCategory } from '@/types/jobs';
+
+// Re-export types for backward compatibility
+export type { WorkflowStatus, Job, Asset, Driver, Evidence, Certificate, AssetCategory } from '@/types/jobs';
+
+export const assetCategories: AssetCategory[] = [
+  { id: 'laptop', name: 'Laptops', icon: '💻', co2ePerUnit: 350, avgWeight: 2.5, avgBuybackValue: 85 },
+  { id: 'desktop', name: 'Desktops', icon: '🖥️', co2ePerUnit: 450, avgWeight: 8, avgBuybackValue: 45 },
+  { id: 'monitor', name: 'Monitors', icon: '📺', co2ePerUnit: 280, avgWeight: 5, avgBuybackValue: 25 },
+  { id: 'server', name: 'Servers', icon: '🗄️', co2ePerUnit: 1200, avgWeight: 25, avgBuybackValue: 250 },
+  { id: 'phone', name: 'Mobile Phones', icon: '📱', co2ePerUnit: 70, avgWeight: 0.2, avgBuybackValue: 40 },
+  { id: 'tablet', name: 'Tablets', icon: '📋', co2ePerUnit: 120, avgWeight: 0.5, avgBuybackValue: 55 },
+  { id: 'printer', name: 'Printers', icon: '🖨️', co2ePerUnit: 180, avgWeight: 12, avgBuybackValue: 15 },
+  { id: 'network', name: 'Network Equipment', icon: '🌐', co2ePerUnit: 95, avgWeight: 3, avgBuybackValue: 35 },
+];
+
+export const mockJobs: Job[] = [
+  {
+    id: 'job-001',
+    erpJobNumber: 'ERP-2024-00142',
+    clientName: 'TechCorp Industries',
+    siteName: 'London HQ',
+    siteAddress: '123 Tech Street, London EC1A 1BB',
+    status: 'finalised',
+    scheduledDate: '2024-11-28',
+    completedDate: '2024-11-28',
+    assets: [
+      { id: 'a1', category: 'laptop', quantity: 45, grade: 'A', weight: 112.5, sanitised: true, wipeMethod: 'Blancco' },
+      { id: 'a2', category: 'monitor', quantity: 30, grade: 'B', weight: 150, sanitised: true },
+      { id: 'a3', category: 'phone', quantity: 25, grade: 'A', weight: 5, sanitised: true, wipeMethod: 'Blancco' },
+    ],
+    driver: { name: 'James Wilson', vehicleReg: 'AB12 CDE', vehicleType: 'van', phone: '+44 7700 900123' },
+    co2eSaved: 26150,
+    travelEmissions: 45,
+    buybackValue: 5875,
+    charityPercent: 10,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-001', 'SEAL-002'] },
+    certificates: [
+      { type: 'chain-of-custody', generatedDate: '2024-11-28', downloadUrl: '#' },
+      { type: 'data-wipe', generatedDate: '2024-11-30', downloadUrl: '#' },
+    ],
+  },
+  {
+    id: 'job-002',
+    erpJobNumber: 'ERP-2024-00143',
+    clientName: 'Green Finance Ltd',
+    siteName: 'Manchester Office',
+    siteAddress: '45 Finance Way, Manchester M1 2AB',
+    status: 'graded',
+    scheduledDate: '2024-12-01',
+    assets: [
+      { id: 'a4', category: 'desktop', quantity: 60, grade: 'B', weight: 480, sanitised: true, wipeMethod: 'Blancco' },
+      { id: 'a5', category: 'server', quantity: 5, grade: 'A', weight: 125, sanitised: true, wipeMethod: 'Blancco' },
+    ],
+    driver: { name: 'Sarah Chen', vehicleReg: 'XY34 FGH', vehicleType: 'truck', phone: '+44 7700 900456' },
+    co2eSaved: 33000,
+    travelEmissions: 120,
+    buybackValue: 3950,
+    charityPercent: 15,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-003', 'SEAL-004', 'SEAL-005'] },
+    certificates: [
+      { type: 'chain-of-custody', generatedDate: '2024-12-01', downloadUrl: '#' },
+    ],
+  },
+  {
+    id: 'job-003',
+    erpJobNumber: 'ERP-2024-00144',
+    clientName: 'HealthFirst NHS Trust',
+    siteName: 'Birmingham Hospital',
+    siteAddress: '789 Health Road, Birmingham B1 1AA',
+    status: 'warehouse',
+    scheduledDate: '2024-12-02',
+    assets: [
+      { id: 'a6', category: 'laptop', quantity: 120, weight: 300 },
+      { id: 'a7', category: 'tablet', quantity: 50, weight: 25 },
+      { id: 'a8', category: 'printer', quantity: 20, weight: 240 },
+    ],
+    driver: { name: 'Mike Thompson', vehicleReg: 'CD56 IJK', vehicleType: 'truck', phone: '+44 7700 900789' },
+    co2eSaved: 51600,
+    travelEmissions: 85,
+    buybackValue: 13550,
+    charityPercent: 5,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-006', 'SEAL-007'] },
+    certificates: [],
+  },
+  {
+    id: 'job-004',
+    erpJobNumber: 'ERP-2024-00145',
+    clientName: 'EduTech University',
+    siteName: 'Campus IT Department',
+    siteAddress: '321 University Ave, Oxford OX1 2AB',
+    status: 'en-route',
+    scheduledDate: '2024-12-04',
+    assets: [
+      { id: 'a9', category: 'laptop', quantity: 200 },
+      { id: 'a10', category: 'monitor', quantity: 150 },
+    ],
+    driver: { name: 'Emma Davis', vehicleReg: 'EF78 LMN', vehicleType: 'truck', eta: '14:30', phone: '+44 7700 900321' },
+    co2eSaved: 112000,
+    travelEmissions: 65,
+    buybackValue: 20750,
+    charityPercent: 20,
+    certificates: [],
+  },
+  {
+    id: 'job-005',
+    erpJobNumber: 'ERP-2024-00146',
+    clientName: 'RetailMax Stores',
+    siteName: 'Distribution Centre',
+    siteAddress: '555 Logistics Park, Leeds LS1 4AA',
+    status: 'booked',
+    scheduledDate: '2024-12-10',
+    assets: [
+      { id: 'a11', category: 'phone', quantity: 500 },
+      { id: 'a12', category: 'tablet', quantity: 200 },
+      { id: 'a13', category: 'network', quantity: 80 },
+    ],
+    co2eSaved: 66600,
+    travelEmissions: 95,
+    buybackValue: 33550,
+    charityPercent: 0,
+    certificates: [],
+  },
+  // Jobs assigned to James Wilson (driver) for testing
+  {
+    id: 'job-006',
+    erpJobNumber: 'ERP-2024-00147',
+    clientName: 'TechCorp Industries',
+    siteName: 'Birmingham Office',
+    siteAddress: '789 Innovation Drive, Birmingham B2 4XY',
+    status: 'en-route',
+    scheduledDate: '2024-12-05',
+    assets: [
+      { id: 'a14', category: 'laptop', quantity: 35 },
+      { id: 'a15', category: 'monitor', quantity: 25 },
+    ],
+    driver: { name: 'Henry Overton', vehicleReg: 'AB12 CDE', vehicleType: 'van', eta: '15:30', phone: '+44 7700 900123' },
+    co2eSaved: 19250,
+    travelEmissions: 52,
+    buybackValue: 4250,
+    charityPercent: 10,
+    certificates: [],
+  },
+  {
+    id: 'job-007',
+    erpJobNumber: 'ERP-2024-00148',
+    clientName: 'Green Finance Ltd',
+    siteName: 'Leeds Branch',
+    siteAddress: '123 Finance Square, Leeds LS1 1AA',
+    status: 'collected',
+    scheduledDate: '2024-12-03',
+    assets: [
+      { id: 'a16', category: 'desktop', quantity: 20 },
+      { id: 'a17', category: 'printer', quantity: 8 },
+    ],
+    driver: { name: 'James Wilson', vehicleReg: 'AB12 CDE', vehicleType: 'van', phone: '+44 7700 900123' },
+    co2eSaved: 10800,
+    travelEmissions: 38,
+    buybackValue: 1240,
+    charityPercent: 15,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-008'] },
+    certificates: [],
+  },
+  {
+    id: 'job-008',
+    erpJobNumber: 'ERP-2024-00149',
+    clientName: 'HealthFirst NHS Trust',
+    siteName: 'Manchester Clinic',
+    siteAddress: '456 Health Avenue, Manchester M2 3AB',
+    status: 'warehouse',
+    scheduledDate: '2024-12-01',
+    assets: [
+      { id: 'a18', category: 'tablet', quantity: 40 },
+      { id: 'a19', category: 'phone', quantity: 60 },
+    ],
+    driver: { name: 'James Wilson', vehicleReg: 'AB12 CDE', vehicleType: 'van', phone: '+44 7700 900123' },
+    co2eSaved: 8200,
+    travelEmissions: 45,
+    buybackValue: 4600,
+    charityPercent: 5,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-009', 'SEAL-010'] },
+    certificates: [
+      { type: 'chain-of-custody', generatedDate: '2024-12-01', downloadUrl: '#' },
+    ],
+  },
+  {
+    id: 'job-009',
+    erpJobNumber: 'ERP-2024-00150',
+    clientName: 'EduTech University',
+    siteName: 'Cambridge Campus',
+    siteAddress: '789 Academic Road, Cambridge CB2 1TN',
+    status: 'routed',
+    scheduledDate: '2024-12-08',
+    assets: [
+      { id: 'a20', category: 'laptop', quantity: 50 },
+      { id: 'a21', category: 'monitor', quantity: 30 },
+      { id: 'a22', category: 'network', quantity: 15 },
+    ],
+    driver: { name: 'Carlos Cruz', vehicleReg: 'AB12 CDE', vehicleType: 'van', phone: '+44 7700 900123' },
+    co2eSaved: 25150,
+    travelEmissions: 68,
+    buybackValue: 6125,
+    charityPercent: 12,
+    certificates: [],
+  },
+  // Jobs for Partner Solutions (Reseller)
+  {
+    id: 'job-010',
+    erpJobNumber: 'ERP-2024-00151',
+    clientName: 'Partner Solutions',
+    siteName: 'Main Office',
+    siteAddress: '100 Business Park, London SW1A 1AA',
+    status: 'graded',
+    scheduledDate: '2024-12-06',
+    assets: [
+      { id: 'a23', category: 'laptop', quantity: 80, grade: 'A', weight: 200, sanitised: true, wipeMethod: 'Blancco' },
+      { id: 'a24', category: 'monitor', quantity: 60, grade: 'B', weight: 300, sanitised: true },
+      { id: 'a25', category: 'server', quantity: 8, grade: 'A', weight: 200, sanitised: true, wipeMethod: 'Blancco' },
+    ],
+    driver: { name: 'Sarah Chen', vehicleReg: 'XY34 FGH', vehicleType: 'truck', phone: '+44 7700 900456' },
+    co2eSaved: 44800,
+    travelEmissions: 110,
+    buybackValue: 10100,
+    charityPercent: 8,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-011', 'SEAL-012', 'SEAL-013'] },
+    certificates: [
+      { type: 'chain-of-custody', generatedDate: '2024-12-06', downloadUrl: '#' },
+      { type: 'data-wipe', generatedDate: '2024-12-07', downloadUrl: '#' },
+    ],
+  },
+  {
+    id: 'job-011',
+    erpJobNumber: 'ERP-2024-00152',
+    clientName: 'Partner Solutions',
+    siteName: 'Warehouse Facility',
+    siteAddress: '200 Industrial Estate, Birmingham B2 4XY',
+    status: 'sanitised',
+    scheduledDate: '2024-12-07',
+    assets: [
+      { id: 'a26', category: 'desktop', quantity: 45, grade: 'B', weight: 360, sanitised: true, wipeMethod: 'Blancco' },
+      { id: 'a27', category: 'printer', quantity: 15, grade: 'C', weight: 180, sanitised: true },
+      { id: 'a28', category: 'network', quantity: 25, grade: 'A', weight: 75, sanitised: true },
+    ],
+    driver: { name: 'Mike Thompson', vehicleReg: 'CD56 IJK', vehicleType: 'truck', phone: '+44 7700 900789' },
+    co2eSaved: 28125,
+    travelEmissions: 95,
+    buybackValue: 3450,
+    charityPercent: 10,
+    evidence: { photos: [], signature: 'collected', sealNumbers: ['SEAL-014', 'SEAL-015'] },
+    certificates: [
+      { type: 'chain-of-custody', generatedDate: '2024-12-07', downloadUrl: '#' },
+    ],
+  },
+];
+
+// Note: statusConfig, co2eEquivalencies, and calculation functions have been moved to:
+// - @/lib/constants.ts (for UI constants)
+// - @/lib/calculations.ts (for calculation utilities)
+// These are not mock data, they are UI/calculation utilities
+
+// Note: dashboardStats calculation is now handled by jobsService.getDashboardStats()
+// This ensures all data access goes through services
+

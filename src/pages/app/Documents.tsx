@@ -14,15 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockJobs } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useJobs } from "@/hooks/useJobs";
+import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { Certificate } from "@/types/jobs";
 
 interface Document {
   id: string;
   jobId: string;
   jobNumber: string;
   clientName: string;
-  type: "chain-of-custody" | "data-wipe" | "destruction" | "recycling";
+  type: Certificate['type'];
   generatedDate: string;
   downloadUrl: string;
 }
@@ -50,22 +53,23 @@ const docTypeConfig = {
   },
 };
 
-// Generate documents from mock jobs
-const allDocuments: Document[] = mockJobs.flatMap((job) =>
-  job.certificates.map((cert, index) => ({
-    id: `${job.id}-${cert.type}-${index}`,
-    jobId: job.id,
-    jobNumber: job.erpJobNumber,
-    clientName: job.clientName,
-    type: cert.type,
-    generatedDate: cert.generatedDate,
-    downloadUrl: cert.downloadUrl,
-  }))
-);
-
 const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const { data: jobs = [], isLoading, error } = useJobs();
+
+  // Generate documents from jobs
+  const allDocuments: Document[] = jobs.flatMap((job) =>
+    job.certificates.map((cert, index) => ({
+      id: `${job.id}-${cert.type}-${index}`,
+      jobId: job.id,
+      jobNumber: job.erpJobNumber,
+      clientName: job.clientName,
+      type: cert.type,
+      generatedDate: cert.generatedDate,
+      downloadUrl: cert.downloadUrl,
+    }))
+  );
 
   const filters = [
     { value: "all", label: "All Documents" },
@@ -82,6 +86,18 @@ const Documents = () => {
     const matchesFilter = activeFilter === "all" || doc.type === activeFilter;
     return matchesSearch && matchesFilter;
   });
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load documents. Please try refreshing the page.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -121,7 +137,7 @@ const Documents = () => {
           {filters.map((filter) => (
             <Button
               key={filter.value}
-              variant={activeFilter === filter.value ? "default" : "outline"}
+              variant={activeFilter === filter.value ? "secondary" : "outline"}
               size="sm"
               onClick={() => setActiveFilter(filter.value)}
               className="whitespace-nowrap"
@@ -132,35 +148,41 @@ const Documents = () => {
         </div>
       </motion.div>
 
-      {/* Document Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Object.entries(docTypeConfig).map(([type, config], index) => {
-          const count = allDocuments.filter((d) => d.type === type).length;
-          const Icon = config.icon;
-          return (
-            <motion.div
-              key={type}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-            >
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter(type)}>
-                <CardContent className="pt-4">
-                  <div className={cn("inline-flex p-2 rounded-lg mb-2", config.color)}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <p className="text-2xl font-bold">{count}</p>
-                  <p className="text-xs text-muted-foreground">{config.label}</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Document Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(docTypeConfig).map(([type, config], index) => {
+              const count = allDocuments.filter((d) => d.type === type).length;
+              const Icon = config.icon;
+              return (
+                <motion.div
+                  key={type}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                >
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter(type)}>
+                    <CardContent className="pt-4">
+                      <div className={cn("inline-flex p-2 rounded-lg mb-2", config.color)}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-xs text-muted-foreground">{config.label}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
 
-      {/* Documents List */}
-      <div className="space-y-3">
-        {filteredDocs.length > 0 ? (
+          {/* Documents List */}
+          <div className="space-y-3">
+            {filteredDocs.length > 0 ? (
           filteredDocs.map((doc, index) => {
             const config = docTypeConfig[doc.type];
             const Icon = config.icon;
@@ -213,7 +235,9 @@ const Documents = () => {
             </p>
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

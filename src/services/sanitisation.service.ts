@@ -1,0 +1,164 @@
+// Sanitisation Service (for admin sanitisation management)
+import type { SanitisationRecord } from '@/mocks/mock-entities';
+import { delay, shouldSimulateError, ApiError, ApiErrorType } from './api-error';
+import { USE_MOCK_API } from '@/lib/config';
+import type { User } from '@/types/auth';
+
+const SERVICE_NAME = 'sanitisation';
+
+// Mock sanitisation records
+const mockSanitisationRecords: SanitisationRecord[] = [
+  {
+    id: 'sanit-001',
+    bookingId: 'booking-005',
+    assetId: 'a1',
+    method: 'blancco',
+    timestamp: '2024-12-11T15:00:00Z',
+    performedBy: 'user-1',
+    certificateId: 'CERT-SANIT-2024-001',
+    certificateUrl: '#',
+    verified: true,
+    notes: 'Blancco software wipe completed successfully',
+  },
+  {
+    id: 'sanit-002',
+    bookingId: 'booking-005',
+    assetId: 'a2',
+    method: 'blancco',
+    timestamp: '2024-12-11T15:30:00Z',
+    performedBy: 'user-1',
+    certificateId: 'CERT-SANIT-2024-002',
+    certificateUrl: '#',
+    verified: true,
+  },
+  {
+    id: 'sanit-003',
+    bookingId: 'booking-006',
+    assetId: 'a3',
+    method: 'physical-destruction',
+    methodDetails: 'Shredded',
+    timestamp: '2024-12-06T10:00:00Z',
+    performedBy: 'user-1',
+    certificateId: 'CERT-SANIT-2024-003',
+    certificateUrl: '#',
+    verified: true,
+    notes: 'Physical destruction via industrial shredder',
+  },
+];
+
+class SanitisationService {
+  async getSanitisationRecords(bookingId?: string): Promise<SanitisationRecord[]> {
+    if (USE_MOCK_API) {
+      return this.getSanitisationRecordsMock(bookingId);
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  private async getSanitisationRecordsMock(bookingId?: string): Promise<SanitisationRecord[]> {
+    await delay(500);
+
+    if (shouldSimulateError(SERVICE_NAME)) {
+      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
+      throw new ApiError(
+        config.errorType || ApiErrorType.NETWORK_ERROR,
+        'Failed to fetch sanitisation records. Please try again.',
+        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
+      );
+    }
+
+    let records = [...mockSanitisationRecords];
+
+    if (bookingId) {
+      records = records.filter(r => r.bookingId === bookingId);
+    }
+
+    return records;
+  }
+
+  async createSanitisationRecord(
+    bookingId: string,
+    assetId: string,
+    method: SanitisationRecord['method'],
+    performedBy: string,
+    methodDetails?: string,
+    notes?: string
+  ): Promise<SanitisationRecord> {
+    if (USE_MOCK_API) {
+      return this.createSanitisationRecordMock(bookingId, assetId, method, performedBy, methodDetails, notes);
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  private async createSanitisationRecordMock(
+    bookingId: string,
+    assetId: string,
+    method: SanitisationRecord['method'],
+    performedBy: string,
+    methodDetails?: string,
+    notes?: string
+  ): Promise<SanitisationRecord> {
+    await delay(1000);
+
+    if (shouldSimulateError(SERVICE_NAME)) {
+      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
+      throw new ApiError(
+        config.errorType || ApiErrorType.SERVER_ERROR,
+        'Failed to create sanitisation record. Please try again.',
+        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
+      );
+    }
+
+    const newRecord: SanitisationRecord = {
+      id: `sanit-${Date.now()}`,
+      bookingId,
+      assetId,
+      method,
+      methodDetails,
+      timestamp: new Date().toISOString(),
+      performedBy,
+      certificateId: `CERT-SANIT-${new Date().getFullYear()}-${String(mockSanitisationRecords.length + 1).padStart(3, '0')}`,
+      certificateUrl: '#',
+      verified: false,
+      notes,
+    };
+
+    mockSanitisationRecords.push(newRecord);
+    return newRecord;
+  }
+
+  async verifySanitisation(recordId: string): Promise<SanitisationRecord> {
+    if (USE_MOCK_API) {
+      return this.verifySanitisationMock(recordId);
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  private async verifySanitisationMock(recordId: string): Promise<SanitisationRecord> {
+    await delay(600);
+
+    if (shouldSimulateError(SERVICE_NAME)) {
+      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
+      throw new ApiError(
+        config.errorType || ApiErrorType.SERVER_ERROR,
+        'Failed to verify sanitisation. Please try again.',
+        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
+      );
+    }
+
+    const record = mockSanitisationRecords.find(r => r.id === recordId);
+    if (!record) {
+      throw new ApiError(
+        ApiErrorType.NOT_FOUND,
+        `Sanitisation record with ID "${recordId}" was not found.`,
+        404,
+        { recordId }
+      );
+    }
+
+    record.verified = true;
+    return record;
+  }
+}
+
+export const sanitisationService = new SanitisationService();
+

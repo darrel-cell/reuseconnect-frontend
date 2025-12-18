@@ -1,0 +1,196 @@
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowLeft, CheckCircle2, Clock, Calendar, MapPin, Package, Truck, Shield, Award, FileCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useBooking } from "@/hooks/useBookings";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
+import { getStatusLabelExtended, getStatusColor } from "@/types/booking-lifecycle";
+import type { BookingLifecycleStatus } from "@/types/booking-lifecycle";
+import { cn } from "@/lib/utils";
+
+const timelineSteps: { status: BookingLifecycleStatus | 'cancelled'; label: string; icon: typeof CheckCircle2; description: string }[] = [
+  { status: 'created', label: 'Created', icon: Package, description: 'Booking request created' },
+  { status: 'scheduled', label: 'Scheduled', icon: Calendar, description: 'Driver assigned and scheduled' },
+  { status: 'collected', label: 'Collected', icon: Truck, description: 'Assets collected by driver' },
+  { status: 'sanitised', label: 'Sanitised', icon: Shield, description: 'Data sanitisation completed' },
+  { status: 'graded', label: 'Graded', icon: Award, description: 'Assets graded for resale' },
+  { status: 'completed', label: 'Completed', icon: FileCheck, description: 'Booking completed' },
+];
+
+const BookingTimeline = () => {
+  const { id } = useParams();
+  const { data: booking, isLoading, error } = useBooking(id || null);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertDescription>Booking not found</AlertDescription>
+        </Alert>
+        <Button asChild>
+          <Link to="/bookings" className="text-inherit no-underline">Back to Bookings</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const currentStatusIndex = timelineSteps.findIndex(step => step.status === booking.status);
+  const isCancelled = booking.status === 'cancelled';
+
+  const getTimestamp = (status: BookingLifecycleStatus) => {
+    switch (status) {
+      case 'created': return booking.createdAt;
+      case 'scheduled': return booking.scheduledAt;
+      case 'collected': return booking.collectedAt;
+      case 'sanitised': return booking.sanitisedAt;
+      case 'graded': return booking.gradedAt;
+      case 'completed': return booking.completedAt;
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-4"
+      >
+        <Button variant="ghost" size="icon" asChild>
+          <Link to={`/bookings/${id}`} className="text-inherit no-underline">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold text-foreground">Booking Timeline</h2>
+          <p className="text-muted-foreground">{booking.bookingNumber} - {booking.clientName}</p>
+        </div>
+      </motion.div>
+
+      {/* Timeline */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
+
+            {/* Timeline Steps */}
+            <div className="space-y-8">
+              {timelineSteps.map((step, index) => {
+                const isCompleted = !isCancelled && currentStatusIndex >= index;
+                const isCurrent = !isCancelled && currentStatusIndex === index;
+                const timestamp = getTimestamp(step.status);
+                const Icon = step.icon;
+                const statusColor = isCompleted || isCurrent
+                  ? getStatusColor(step.status)
+                  : 'text-muted-foreground bg-muted';
+
+                return (
+                  <motion.div
+                    key={step.status}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="relative flex items-start gap-4"
+                  >
+                    {/* Icon */}
+                    <div className={cn(
+                      "relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
+                      isCompleted || isCurrent
+                        ? "border-primary bg-primary/10"
+                        : "border-muted bg-muted"
+                    )}>
+                      {isCompleted ? (
+                        <CheckCircle2 className={cn("h-6 w-6", isCompleted ? "text-primary" : "text-muted-foreground")} />
+                      ) : (
+                        <Icon className={cn("h-6 w-6", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 pt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-foreground">{step.label}</h3>
+                        {isCurrent && (
+                          <Badge variant="secondary" className="bg-primary/10 text-primary">
+                            Current
+                          </Badge>
+                        )}
+                        {isCompleted && (
+                          <Badge variant="outline" className="bg-success/10 text-success">
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{step.description}</p>
+                      {timestamp && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(timestamp).toLocaleString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                      {isCurrent && !timestamp && (
+                        <p className="text-xs text-warning">Pending</p>
+                      )}
+                      {!isCompleted && !isCurrent && (
+                        <p className="text-xs text-muted-foreground">Not started</p>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {isCancelled && (
+              <div className="mt-8 pt-8 border-t">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-destructive bg-destructive/10">
+                    <Clock className="h-6 w-6 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-destructive">Cancelled</h3>
+                    <p className="text-sm text-muted-foreground">This booking has been cancelled</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Additional Info */}
+      {booking.driverName && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Truck className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Assigned Driver</p>
+                <p className="font-medium">{booking.driverName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default BookingTimeline;
+

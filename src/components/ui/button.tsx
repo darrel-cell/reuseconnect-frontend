@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:scale-[0.98]",
-        destructive: "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-secondary hover:text-secondary-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-secondary hover:text-secondary-foreground",
+        default: "bg-primary text-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:scale-[0.98] active:bg-primary/95",
+        destructive: "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 active:bg-destructive/95",
+        outline: "border-2 border-input bg-background hover:bg-secondary text-secondary-foreground hover:text-secondary-foreground hover:border-primary/50 active:bg-secondary/80",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70",
+        ghost: "hover:bg-secondary/80 hover:text-foreground active:bg-secondary/70",
         link: "text-primary underline-offset-4 hover:underline",
         success: "bg-success text-success-foreground shadow-md hover:bg-success/90",
         accent: "bg-accent text-accent-foreground shadow-md hover:bg-accent/90",
-        hero: "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg hover:shadow-xl active:scale-[0.98] font-semibold",
+        hero: "bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg hover:shadow-xl active:scale-[0.98] font-semibold",
         glass: "bg-card/80 backdrop-blur-sm border border-border/50 text-foreground hover:bg-card/90 shadow-sm",
       },
       size: {

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Search, Filter, ArrowRight, MapPin, Calendar, Package } from "lucide-react";
+import { Search, ArrowRight, MapPin, Calendar, Package, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
-import { mockJobs, WorkflowStatus } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import type { WorkflowStatus } from "@/types/jobs";
+import { useJobs } from "@/hooks/useJobs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const statusFilters: { value: WorkflowStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -22,13 +23,9 @@ const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<WorkflowStatus | "all">("all");
 
-  const filteredJobs = mockJobs.filter((job) => {
-    const matchesSearch =
-      job.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.erpJobNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.siteName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === "all" || job.status === activeFilter;
-    return matchesSearch && matchesFilter;
+  const { data: jobs, isLoading, error } = useJobs({
+    status: activeFilter === "all" ? undefined : activeFilter,
+    searchQuery: searchQuery || undefined,
   });
 
   return (
@@ -52,7 +49,7 @@ const Jobs = () => {
           {statusFilters.map((filter) => (
             <Button
               key={filter.value}
-              variant={activeFilter === filter.value ? "default" : "outline"}
+              variant={activeFilter === filter.value ? "secondary" : "outline"}
               size="sm"
               onClick={() => setActiveFilter(filter.value)}
               className="whitespace-nowrap"
@@ -64,8 +61,26 @@ const Jobs = () => {
       </motion.div>
 
       {/* Jobs List */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load jobs. Please try refreshing the page.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="space-y-3">
-        {filteredJobs.map((job, index) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : !jobs || jobs.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">No jobs found matching your criteria</p>
+          </div>
+        ) : (
+          jobs.map((job, index) => (
           <motion.div
             key={job.id}
             initial={{ opacity: 0, y: 20 }}
@@ -142,13 +157,7 @@ const Jobs = () => {
               )}
             </Link>
           </motion.div>
-        ))}
-
-        {filteredJobs.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">No jobs found matching your criteria</p>
-          </div>
+        ))
         )}
       </div>
     </div>

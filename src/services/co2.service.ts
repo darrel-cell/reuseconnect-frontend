@@ -1,0 +1,167 @@
+// Mock CO₂ Calculation Service
+import { assetCategories } from '@/mocks/mock-data';
+import { calculateReuseCO2e, calculateTravelEmissions } from '@/lib/calculations';
+import { delay, shouldSimulateError, ApiError, ApiErrorType } from './api-error';
+
+const SERVICE_NAME = 'co2';
+
+export interface CO2CalculationRequest {
+  assets: Array<{
+    categoryId: string;
+    quantity: number;
+  }>;
+  distanceKm?: number;
+  vehicleType?: 'car' | 'van' | 'truck';
+}
+
+export interface CO2CalculationResponse {
+  reuseSavings: number; // kg CO2e
+  travelEmissions: number; // kg CO2e
+  netImpact: number; // kg CO2e
+  equivalencies: {
+    treesPlanted: number;
+    householdDays: number;
+    carMiles: number;
+    flightHours: number;
+  };
+}
+
+// CO2e equivalencies
+const co2eEquivalencies = {
+  treesPlanted: (kg: number) => Math.round(kg / 21), // 1 tree absorbs ~21kg CO2/year
+  householdDays: (kg: number) => Math.round(kg / 27), // UK household ~27kg CO2/day
+  carMiles: (kg: number) => Math.round(kg / 0.21), // ~0.21kg CO2 per mile
+  flightHours: (kg: number) => Math.round(kg / 250), // ~250kg CO2 per flight hour
+};
+
+class CO2Service {
+  async calculateCO2e(request: CO2CalculationRequest): Promise<CO2CalculationResponse> {
+    await delay(500);
+
+    // Simulate errors
+    if (shouldSimulateError(SERVICE_NAME)) {
+      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
+      throw new ApiError(
+        config.errorType || ApiErrorType.SERVER_ERROR,
+        'Failed to calculate CO₂e. Please try again.',
+        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
+      );
+    }
+
+    // Validate input
+    if (!request.assets || request.assets.length === 0) {
+      throw new ApiError(
+        ApiErrorType.VALIDATION_ERROR,
+        'At least one asset is required for CO₂e calculation.',
+        400
+      );
+    }
+
+    // Validate asset quantities
+    for (const asset of request.assets) {
+      if (asset.quantity <= 0) {
+        throw new ApiError(
+          ApiErrorType.VALIDATION_ERROR,
+          `Invalid quantity for asset category "${asset.categoryId}". Quantity must be greater than 0.`,
+          400,
+          { categoryId: asset.categoryId, quantity: asset.quantity }
+        );
+      }
+
+      // Check if category exists
+      const category = assetCategories.find(cat => cat.id === asset.categoryId);
+      if (!category) {
+        throw new ApiError(
+          ApiErrorType.VALIDATION_ERROR,
+          `Invalid asset category "${asset.categoryId}".`,
+          400,
+          { categoryId: asset.categoryId }
+        );
+      }
+    }
+
+    // Validate distance if provided
+    if (request.distanceKm !== undefined && request.distanceKm < 0) {
+      throw new ApiError(
+        ApiErrorType.VALIDATION_ERROR,
+        'Distance must be a positive number.',
+        400
+      );
+    }
+
+    // Validate vehicle type if provided
+    if (request.vehicleType && !['car', 'van', 'truck'].includes(request.vehicleType)) {
+      throw new ApiError(
+        ApiErrorType.VALIDATION_ERROR,
+        `Invalid vehicle type "${request.vehicleType}". Must be one of: car, van, truck.`,
+        400,
+        { vehicleType: request.vehicleType }
+      );
+    }
+
+    // Calculate reuse savings
+    const reuseSavings = calculateReuseCO2e(request.assets, assetCategories);
+
+    // Calculate travel emissions (default to 80km van if not provided)
+    const distance = request.distanceKm || 80;
+    const vehicleType = request.vehicleType || 'van';
+    const travelEmissions = calculateTravelEmissions(distance, vehicleType);
+
+    // Calculate net impact
+    const netImpact = reuseSavings - travelEmissions;
+
+    // Calculate equivalencies
+    const equivalencies = {
+      treesPlanted: co2eEquivalencies.treesPlanted(netImpact),
+      householdDays: co2eEquivalencies.householdDays(netImpact),
+      carMiles: co2eEquivalencies.carMiles(netImpact),
+      flightHours: co2eEquivalencies.flightHours(netImpact),
+    };
+
+    return {
+      reuseSavings,
+      travelEmissions,
+      netImpact,
+      equivalencies,
+    };
+  }
+
+  async getJobCO2e(jobId: string): Promise<CO2CalculationResponse | null> {
+    await delay(500);
+
+    // Simulate errors
+    if (shouldSimulateError(SERVICE_NAME)) {
+      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
+      if (config.errorType === ApiErrorType.NOT_FOUND) {
+        throw new ApiError(
+          ApiErrorType.NOT_FOUND,
+          `CO₂e data for job "${jobId}" was not found.`,
+          404,
+          { jobId }
+        );
+      }
+      throw new ApiError(
+        config.errorType || ApiErrorType.NETWORK_ERROR,
+        'Failed to fetch CO₂e data. Please try again.',
+        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
+      );
+    }
+
+    // This would fetch from backend in real implementation
+    // For now, return mock data
+    return {
+      reuseSavings: 50000,
+      travelEmissions: 100,
+      netImpact: 49900,
+      equivalencies: {
+        treesPlanted: 2376,
+        householdDays: 1848,
+        carMiles: 237619,
+        flightHours: 199,
+      },
+    };
+  }
+}
+
+export const co2Service = new CO2Service();
+
