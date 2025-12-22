@@ -589,7 +589,7 @@ const Settings = () => {
             {/* Action Button */}
             <div className="flex justify-end pt-4 border-t">
               <Button 
-                variant="header" 
+                variant="default" 
                 size="lg"
                 onClick={() => {
                   if (!passwordForm.current) {

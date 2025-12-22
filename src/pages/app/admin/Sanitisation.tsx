@@ -205,7 +205,7 @@ const Sanitisation = () => {
           <p className="text-muted-foreground">{booking.bookingNumber} - {booking.clientName}</p>
         </div>
         {!showForm && (
-          <Button variant="header" onClick={() => setShowForm(true)}>
+          <Button variant="default" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Record Sanitisation
           </Button>
@@ -280,7 +280,7 @@ const Sanitisation = () => {
 
               <div className="flex gap-2">
                 <Button
-                  variant="header"
+                  variant="default"
                   onClick={handleCreateRecord}
                   disabled={!selectedAssetId || !method || createRecord.isPending}
                 >
@@ -401,7 +401,7 @@ const Sanitisation = () => {
                 </p>
               </div>
               <Button 
-                variant="header" 
+                variant="success" 
                 size="lg"
                 onClick={handleMoveToNextStatus}
                 disabled={updateBookingStatus.isPending}
@@ -433,7 +433,7 @@ const Sanitisation = () => {
                 </p>
               </div>
               <Button 
-                variant="header" 
+                variant="success" 
                 size="lg"
                 onClick={handleMoveToNextStatus}
                 disabled={updateBookingStatus.isPending}

@@ -178,7 +178,7 @@ const Users = () => {
                     </div>
                   </div>
                   <Button
-                    variant="outline"
+                    variant={user.isActive ? "destructive" : "success"}
                     size="sm"
                     onClick={() => handleToggleStatus(user.id, user.isActive)}
                     disabled={updateStatus.isPending}

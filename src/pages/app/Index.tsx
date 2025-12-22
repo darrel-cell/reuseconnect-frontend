@@ -49,7 +49,7 @@ const Index = () => {
           </p>
         </div>
         {canCreateBooking && (
-          <Button variant="header" size="lg" asChild>
+          <Button variant="default" size="lg" asChild>
             <Link to="/booking" className="text-inherit no-underline">
               <Plus />
               New Booking

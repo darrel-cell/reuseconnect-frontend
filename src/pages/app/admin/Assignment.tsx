@@ -251,7 +251,7 @@ const Assignment = () => {
                   )}
 
                   <Button
-                    variant="header"
+                    variant="default"
                     onClick={handleAssign}
                     disabled={!selectedDriverId || assignMutation.isPending}
                     className="w-full"

@@ -154,7 +154,7 @@ const Grading = () => {
           <p className="text-muted-foreground">{booking.bookingNumber} - {booking.clientName}</p>
         </div>
         {!showForm && (
-          <Button variant="header" onClick={() => setShowForm(true)}>
+          <Button variant="default" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Grade Asset
           </Button>
@@ -173,7 +173,7 @@ const Grading = () => {
           </div>
           {allAssetsGraded && booking.status === 'graded' && (
             <div className="mt-4 pt-4 border-t border-accent/20">
-              <Button variant="header" className="w-full" onClick={() => navigate(`/admin/approval/${id}`)}>
+              <Button variant="success" className="w-full" onClick={() => navigate(`/admin/approval/${id}`)}>
                 <FileCheck className="h-4 w-4 mr-2" />
                 Proceed to Final Approval
               </Button>
@@ -182,7 +182,7 @@ const Grading = () => {
           {allAssetsGraded && booking.status === 'sanitised' && (
             <div className="mt-4 pt-4 border-t border-accent/20">
               <Button 
-                variant="header" 
+                variant="success" 
                 size="lg"
                 className="w-full" 
                 onClick={() => {
@@ -302,7 +302,7 @@ const Grading = () => {
 
               <div className="flex gap-2">
                 <Button
-                  variant="header"
+                  variant="default"
                   onClick={handleCreateRecord}
                   disabled={!selectedAssetId || !grade || createRecord.isPending}
                 >

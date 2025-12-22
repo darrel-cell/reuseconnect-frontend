@@ -313,7 +313,7 @@ const Approval = () => {
             </div>
             <div className="flex gap-3">
               <Button
-                variant="header"
+                variant="success"
                 size="lg"
                 onClick={handleApprove}
                 disabled={completeBooking.isPending || !allProcessesComplete}

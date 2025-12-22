@@ -22,7 +22,80 @@ export function TenantThemeProvider({ children }: { children: ReactNode }) {
     tenantName: 'Reuse ITAD Platform',
   });
 
+  // Parse color function - defined outside useEffect to avoid dependency issues
+  const parseColor = (color: string): string => {
+    if (!color || typeof color !== 'string') {
+      return color;
+    }
+
+    const trimmed = color.trim();
+
+    // If it's in hsl() format, extract just the values
+    // Handles: hsl(168, 70%, 35%), hsl(168 70% 35%), hsl(168,70%,35%)
+    if (trimmed.toLowerCase().startsWith('hsl(')) {
+      const match = trimmed.match(/hsl\(([^)]+)\)/i);
+      if (match) {
+        // Remove all commas and extra spaces, return just the values: "168 70% 35%"
+        return match[1].replace(/,/g, '').replace(/\s+/g, ' ').trim();
+      }
+    }
+
+    // If it's in rgb() format, we'd need to convert to HSL (not implemented, but structure is here)
+    if (trimmed.toLowerCase().startsWith('rgb(')) {
+      // TODO: Convert RGB to HSL if needed
+      console.warn('RGB color format not yet supported, please use HSL format');
+      return trimmed;
+    }
+
+    // If it's a hex color, we'd need to convert to HSL (not implemented, but structure is here)
+    if (trimmed.startsWith('#')) {
+      // TODO: Convert hex to HSL if needed
+      console.warn('Hex color format not yet supported, please use HSL format');
+      return trimmed;
+    }
+
+    // If it's already in the correct format (just HSL values like "168 70% 35%"), return as is
+    // Check if it matches the pattern: number, space, number%, space, number%
+    const hslValuePattern = /^\d+\s+\d+%\s+\d+%$/;
+    if (hslValuePattern.test(trimmed)) {
+      return trimmed;
+    }
+
+    // If we can't parse it, return as is (might cause issues, but better than crashing)
+    console.warn(`Unable to parse color format: ${color}. Expected HSL format like "hsl(168, 70%, 35%)" or "168 70% 35%"`);
+    return trimmed;
+  };
+
+  const applyTheme = (tenantData?: Tenant) => {
+    const root = document.documentElement;
+    
+    if (tenantData) {
+      // Apply primary color if provided
+      if (tenantData.primaryColor) {
+        const primary = parseColor(tenantData.primaryColor);
+        root.style.setProperty('--primary', primary);
+      } else {
+        // Reset to default from CSS
+        root.style.removeProperty('--primary');
+      }
+
+      // Apply accent color if provided
+      if (tenantData.accentColor) {
+        const accent = parseColor(tenantData.accentColor);
+        root.style.setProperty('--accent', accent);
+      } else {
+        // Reset to default from CSS
+        root.style.removeProperty('--accent');
+      }
+    } else {
+      // No tenant - reset to CSS defaults
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--accent');
+    }
+  };
+
   useEffect(() => {
+    // Always apply theme, even if no tenant (to ensure defaults are set)
     if (tenant) {
       setTheme({
         primaryColor: tenant.primaryColor || 'hsl(168, 70%, 35%)',
@@ -31,37 +104,11 @@ export function TenantThemeProvider({ children }: { children: ReactNode }) {
         tenantName: tenant.name,
       });
       applyTheme(tenant);
+    } else {
+      // Reset to defaults when no tenant
+      applyTheme(undefined);
     }
   }, [tenant]);
-
-  const applyTheme = (tenantData?: Tenant) => {
-    const data = tenantData || tenant;
-    if (!data) return;
-
-    const root = document.documentElement;
-    
-    // Apply primary color
-    if (data.primaryColor) {
-      const primary = parseColor(data.primaryColor);
-      root.style.setProperty('--primary', primary);
-    }
-
-    // Apply accent color
-    if (data.accentColor) {
-      const accent = parseColor(data.accentColor);
-      root.style.setProperty('--accent', accent);
-    }
-  };
-
-  // Parse HSL color string to CSS variable format
-  const parseColor = (color: string): string => {
-    // If already in HSL format, return as is
-    if (color.startsWith('hsl(')) {
-      return color;
-    }
-    // Otherwise, assume it's a hex or other format and convert
-    return color;
-  };
 
   return (
     <TenantThemeContext.Provider

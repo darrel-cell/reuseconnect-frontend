@@ -190,7 +190,7 @@ const BookingQueue = () => {
                               </div>
                             )}
                             {booking.status === 'created' && (
-                              <Button variant="header" asChild className="w-full mt-2" size="sm">
+                              <Button variant="default" asChild className="w-full mt-2" size="sm">
                                 <Link to={`/admin/assign?booking=${booking.id}`} className="text-inherit no-underline">
                                   <UserPlus />
                                   Assign Driver
@@ -198,21 +198,21 @@ const BookingQueue = () => {
                               </Button>
                             )}
                             {booking.status === 'collected' && (
-                              <Button asChild className="w-full mt-2" size="sm" variant="outline">
+                              <Button asChild className="w-full mt-2" size="sm" variant="default">
                                 <Link to={`/admin/sanitisation/${booking.id}`} className="text-inherit no-underline">
                                   Record Sanitisation
                                 </Link>
                               </Button>
                             )}
                             {booking.status === 'sanitised' && (
-                              <Button asChild className="w-full mt-2" size="sm" variant="outline">
+                              <Button asChild className="w-full mt-2" size="sm" variant="default">
                                 <Link to={`/admin/grading/${booking.id}`} className="text-inherit no-underline">
                                   Grade Assets
                                 </Link>
                               </Button>
                             )}
                             {booking.status === 'graded' && (
-                              <Button asChild className="w-full mt-2" size="sm" variant="header">
+                              <Button asChild className="w-full mt-2" size="sm" variant="success">
                                 <Link to={`/admin/approval/${booking.id}`} className="text-inherit no-underline">
                                   Final Approval
                                 </Link>

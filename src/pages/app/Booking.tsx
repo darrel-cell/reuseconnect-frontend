@@ -997,7 +997,7 @@ const Booking = () => {
           </Button>
         ) : (
           <Button
-            variant="header"
+            variant="default"
             onClick={handleSubmit}
             disabled={createBooking.isPending}
           >

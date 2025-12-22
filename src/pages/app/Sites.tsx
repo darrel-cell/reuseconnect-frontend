@@ -227,7 +227,7 @@ const Sites = () => {
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
-            <Button variant="header" size="lg" onClick={() => {
+            <Button variant="default" size="lg" onClick={() => {
               resetForm();
               setShowCreateDialog(true);
             }}>
@@ -373,7 +373,7 @@ const Sites = () => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" variant="header" disabled={createSite.isPending || updateSite.isPending}>
+                <Button type="submit" variant="default" disabled={createSite.isPending || updateSite.isPending}>
                   {createSite.isPending || updateSite.isPending ? (
                     <>
                       <Loader2 className="animate-spin" />
