@@ -11,9 +11,11 @@ import { useJobs } from "@/hooks/useJobs";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const statusFilters: { value: WorkflowStatus | "all"; label: string }[] = [
+// Base status filters - all possible statuses
+const allStatusFilters: { value: WorkflowStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "booked", label: "Booked" },
+  { value: "routed", label: "Routed" },
   { value: "en-route", label: "En Route" },
   { value: "arrived", label: "Arrived" },
   { value: "collected", label: "Collected" },
@@ -21,6 +23,18 @@ const statusFilters: { value: WorkflowStatus | "all"; label: string }[] = [
   { value: "graded", label: "Graded" },
   { value: "completed", label: "Completed" },
 ];
+
+// Get status filters based on user role
+const getStatusFilters = (userRole?: string) => {
+  if (userRole === 'driver') {
+    // Drivers only see jobs assigned to them: routed, en-route, arrived, collected
+    // They don't see booked (unassigned), warehouse, graded, or completed jobs
+    return allStatusFilters.filter(
+      filter => !['booked', 'warehouse', 'graded', 'completed'].includes(filter.value)
+    );
+  }
+  return allStatusFilters;
+};
 
 const Jobs = () => {
   const { user } = useAuth();
@@ -67,7 +81,7 @@ const Jobs = () => {
           />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
-          {statusFilters.map((filter) => (
+          {getStatusFilters(user?.role).map((filter) => (
             <Button
               key={filter.value}
               variant={activeFilter === filter.value ? "secondary" : "outline"}

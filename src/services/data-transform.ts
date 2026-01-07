@@ -17,6 +17,8 @@ interface BackendJob {
   travelEmissions: number;
   buybackValue: number;
   charityPercent: number;
+  roundTripDistanceKm?: number | null; // From booking
+  roundTripDistanceMiles?: number | null; // From booking
   assets?: BackendJobAsset[];
   driver?: BackendDriver | null;
   evidence?: BackendEvidence[] | BackendEvidence | null; // Can be array (new format) or single object (backward compatibility)
@@ -261,6 +263,8 @@ export function transformJob(backendJob: BackendJob): Job {
     travelEmissions: backendJob.travelEmissions,
     buybackValue: backendJob.buybackValue,
     charityPercent: backendJob.charityPercent,
+    roundTripDistanceKm: backendJob.roundTripDistanceKm ?? undefined,
+    roundTripDistanceMiles: backendJob.roundTripDistanceMiles ?? undefined,
     evidence: transformedEvidence as Evidence[] | Evidence | undefined,
     certificates: (backendJob.certificates || []).map(transformCertificate),
   };

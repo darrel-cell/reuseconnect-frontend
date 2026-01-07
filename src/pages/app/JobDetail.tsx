@@ -71,18 +71,27 @@ const JobDetail = () => {
   const totalAssets = job.assets.reduce((sum, a) => sum + a.quantity, 0);
   const netCO2e = job.co2eSaved - job.travelEmissions;
   
-  // Calculate round trip distance from travel emissions
-  // Using average emissions per km (0.24 kg/km for van, which is conservative)
-  // If we know the vehicle type, we can use more accurate emissions
-  const vehicleEmissionsPerKm = job.driver?.vehicleFuelType === 'electric' 
-    ? 0 
-    : job.driver?.vehicleFuelType === 'diesel' 
-    ? 0.27 
-    : 0.24; // Default to petrol/van
-  const roundTripDistanceKm = vehicleEmissionsPerKm > 0 
-    ? job.travelEmissions / vehicleEmissionsPerKm 
-    : 0;
-  const roundTripDistanceMiles = roundTripDistanceKm * 0.621371;
+  // Use actual round trip distance from booking if available (more accurate)
+  // Otherwise, calculate from travel emissions as fallback
+  let roundTripDistanceKm = 0;
+  let roundTripDistanceMiles = 0;
+  
+  if (job.roundTripDistanceKm && job.roundTripDistanceKm > 0) {
+    // Use actual distance from booking (calculated at booking creation)
+    roundTripDistanceKm = job.roundTripDistanceKm;
+    roundTripDistanceMiles = job.roundTripDistanceMiles || (roundTripDistanceKm * 0.621371);
+  } else if (job.travelEmissions && job.travelEmissions > 0) {
+    // Fallback: calculate from travel emissions if booking distance not available
+    const vehicleEmissionsPerKm = job.driver?.vehicleFuelType === 'electric' 
+      ? 0 
+      : job.driver?.vehicleFuelType === 'diesel' 
+      ? 0.27 
+      : 0.24; // Default to petrol/van
+    roundTripDistanceKm = vehicleEmissionsPerKm > 0 
+      ? job.travelEmissions / vehicleEmissionsPerKm 
+      : 0;
+    roundTripDistanceMiles = roundTripDistanceKm * 0.621371;
+  }
 
   return (
     <div className="space-y-6">

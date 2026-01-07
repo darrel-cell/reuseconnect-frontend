@@ -23,6 +23,7 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   deleteNotification: (id: string) => void;
   refreshNotifications: () => void;
+  isMarkingAllAsRead: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -119,8 +120,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch notifications from API
-  const { data: notificationsData, isLoading } = useQuery({
+  // Fetch notifications from API - only when explicitly requested (e.g., when bell icon is clicked)
+  // No automatic polling - fetched on-demand only
+  const { data: notificationsData, isLoading, refetch: refetchNotifications } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: async () => {
       if (!user?.id) {
@@ -149,9 +151,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return { notifications: [], total: 0 };
       }
     },
-    enabled: !!user?.id,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    enabled: !!user?.id, // Enabled when user is logged in, but no automatic polling
+    refetchInterval: false, // No automatic polling - only fetch on-demand
+    staleTime: Infinity, // Consider data fresh until manually refetched
   });
 
   // Fetch unread count
@@ -176,8 +178,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationsService.markAsRead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    onSuccess: async () => {
+      // Invalidate and refetch notifications list to show updated read status
+      await queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+      await refetchNotifications();
+      // Invalidate unread count to update the badge
       queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
     },
   });
@@ -185,8 +190,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: () => notificationsService.markAllAsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    onSuccess: async () => {
+      // Invalidate and refetch notifications list to show updated read status
+      await queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+      await refetchNotifications();
+      // Invalidate unread count to update the badge
       queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
     },
   });
@@ -213,7 +221,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshNotifications = () => {
-    queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    // Fetch notifications list when explicitly called (e.g., when bell icon is clicked)
+    refetchNotifications();
+    // Also invalidate unread count to refresh the badge
     queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
   };
 
@@ -226,6 +236,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         markAllAsRead,
         deleteNotification,
         refreshNotifications,
+        isMarkingAllAsRead: markAllAsReadMutation.isPending,
       }}
     >
       {children}

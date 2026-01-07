@@ -118,16 +118,26 @@ const Index = () => {
       ) : null}
 
       {/* Main Content Grid */}
-      <div className={`grid gap-6 ${user?.role === 'driver' ? 'lg:grid-cols-1' : 'lg:grid-cols-5'}`}>
-        <div className={user?.role === 'driver' ? 'space-y-6' : 'lg:col-span-3'}>
-          <RecentJobsTable />
-          {user?.role === 'driver' && <TravelEmissionsBox />}
-        </div>
-        {user?.role !== 'driver' && (
-          <div className="lg:col-span-2 space-y-6">
-            <CO2eOverview />
-            <TravelEmissionsBox />
-          </div>
+      <div className={`grid gap-6 ${user?.role === 'driver' ? 'lg:grid-cols-5' : 'lg:grid-cols-5'}`}>
+        {user?.role === 'driver' ? (
+          <>
+            <div className="lg:col-span-3">
+              <RecentJobsTable />
+            </div>
+            <div className="lg:col-span-2">
+              <TravelEmissionsBox />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="lg:col-span-3">
+              <RecentJobsTable />
+            </div>
+            <div className="lg:col-span-2 space-y-6">
+              <CO2eOverview />
+              <TravelEmissionsBox />
+            </div>
+          </>
         )}
       </div>
     </div>

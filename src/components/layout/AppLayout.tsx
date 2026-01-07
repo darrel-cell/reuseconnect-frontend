@@ -40,7 +40,8 @@ export function AppLayout() {
   const { data: searchResults, isLoading: isSearching } = useSearch(searchQuery);
   
   // Notification state from context
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, isMarkingAllAsRead } = useNotifications();
+  const [isNotificationPopoverOpen, setIsNotificationPopoverOpen] = useState(false);
   
   // Check if user is pending approval
   const { user } = useAuth();
@@ -302,7 +303,13 @@ export function AppLayout() {
               </div>
 
               {/* Notifications */}
-              <Popover>
+              <Popover open={isNotificationPopoverOpen} onOpenChange={(open) => {
+                setIsNotificationPopoverOpen(open);
+                // Fetch notifications when popover opens
+                if (open) {
+                  refreshNotifications();
+                }
+              }}>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
@@ -328,8 +335,16 @@ export function AppLayout() {
                         size="sm" 
                         className="h-6 px-2 text-xs"
                         onClick={handleMarkAllAsRead}
+                        disabled={isMarkingAllAsRead}
                       >
-                        Mark all as read
+                        {isMarkingAllAsRead ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Marking...
+                          </>
+                        ) : (
+                          'Mark all as read'
+                        )}
                       </Button>
                     )}
                   </div>

@@ -27,6 +27,8 @@ export interface Job {
   travelEmissions: number;
   buybackValue: number;
   charityPercent: number;
+  roundTripDistanceKm?: number | null; // From booking (actual calculated distance)
+  roundTripDistanceMiles?: number | null; // From booking (actual calculated distance)
   evidence?: Evidence | Evidence[]; // Can be single evidence (backward compat) or array of evidence per status
   certificates: Certificate[];
 }
