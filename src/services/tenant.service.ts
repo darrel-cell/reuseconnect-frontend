@@ -11,7 +11,7 @@ const SERVICE_NAME = 'tenant';
 const mockTenants: Tenant[] = [
   {
     id: 'tenant-1',
-    name: 'Reuse ITAD Platform',
+    name: 'Reuse Connect ITAD Platform',
     slug: 'admin', // Admin subdomain
     logo: '/logo.avif',
     favicon: '/favicon.ico',

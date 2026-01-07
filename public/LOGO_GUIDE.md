@@ -81,7 +81,7 @@ The code is already set up to use `/logo.avif` in:
 
 If logo file is missing or fails to load:
 - Shows first letter of tenant name in a colored circle
-- Example: "R" for "Reuse ITAD Platform"
+- Example: "R" for "Reuse Connect ITAD Platform"
 
 ## 🏢 Multi-Tenant Support
 

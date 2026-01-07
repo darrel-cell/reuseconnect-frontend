@@ -18,7 +18,7 @@ const mockUsers: User[] = [
     role: 'admin',
     status: 'active',
     tenantId: 'tenant-1',
-    tenantName: 'Reuse ITAD Platform',
+    tenantName: 'Reuse Connect ITAD Platform',
     createdAt: '2024-01-01',
   },
   {
@@ -48,7 +48,7 @@ const mockUsers: User[] = [
     role: 'driver',
     status: 'active',
     tenantId: 'tenant-1',
-    tenantName: 'Reuse ITAD Platform',
+    tenantName: 'Reuse Connect ITAD Platform',
     createdAt: '2024-03-01',
   },
 ];
@@ -56,7 +56,7 @@ const mockUsers: User[] = [
 const mockTenants: Tenant[] = [
   {
     id: 'tenant-1',
-    name: 'Reuse ITAD Platform',
+    name: 'Reuse Connect ITAD Platform',
     slug: 'reuse',
     primaryColor: '168, 70%, 35%',
     accentColor: '168, 60%, 45%',

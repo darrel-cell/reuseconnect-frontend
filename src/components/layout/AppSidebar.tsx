@@ -133,7 +133,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img 
             src={logo || '/logo.avif'} 
-            alt="Reuse ITAD Platform"
+            alt="Reuse Connect ITAD Platform"
             className={cn(
               "object-contain transition-all duration-200",
               isCollapsed ? "h-8 w-8" : "h-10 w-auto max-w-[140px]"
@@ -150,7 +150,7 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-sidebar-foreground text-lg">
-                Reuse
+                Reuse Connect
               </span>
               <span className="text-xs text-sidebar-foreground/60">ITAD Platform</span>
             </div>
@@ -226,7 +226,7 @@ export function AppSidebar() {
                           ? clientProfile.organisationName
                           : user.role === 'reseller' && organisationProfile?.organisationName
                             ? organisationProfile.organisationName
-                            : 'Reuse ITAD Platform'}
+                            : 'Reuse Connect ITAD Platform'}
                       </p>
                       <p className="text-xs text-sidebar-foreground/60 truncate capitalize">
                         {user.name} • {user.role}

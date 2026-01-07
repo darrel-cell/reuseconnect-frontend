@@ -1,4 +1,4 @@
-// Mock data for the Reuse ITAD Platform Demo
+// Mock data for the Reuse Connect ITAD Platform Demo
 // This file contains ONLY mock data - no utilities, constants, or calculation functions
 // Types are defined in @/types/jobs.ts
 // UI constants are in @/lib/constants.ts

@@ -1,5 +1,5 @@
 # Comprehensive Codebase Audit Report
-## ERP-Sync-CO-e-Engine-Workflow (Reuse ITAD Platform)
+## ERP-Sync-CO-e-Engine-Workflow (Reuse Connect ITAD Platform)
 
 **Date:** December 2024  
 **Milestone:** Milestone 1 (Frontend-Only Development)  

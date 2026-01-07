@@ -61,7 +61,7 @@ const Login = () => {
             </div>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>
-              Sign in to Reuse ITAD Platform
+              Sign in to Reuse Connect ITAD Platform
             </CardDescription>
           </CardHeader>
           <CardContent>

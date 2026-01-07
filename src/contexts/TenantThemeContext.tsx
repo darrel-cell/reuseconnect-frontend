@@ -13,13 +13,13 @@ interface TenantThemeContextType {
 
 const TenantThemeContext = createContext<TenantThemeContextType | undefined>(undefined);
 
-// Single brand configuration - Reuse ITAD Platform
+// Single brand configuration - Reuse Connect ITAD Platform
 const DEFAULT_THEME = {
   primaryColor: '168, 70%, 35%',
   accentColor: '168, 60%, 45%',
   logo: '/logo.avif',
   favicon: '/favicon.ico',
-  tenantName: 'Reuse ITAD Platform',
+  tenantName: 'Reuse Connect ITAD Platform',
 };
 
 export function TenantThemeProvider({ children }: { children: ReactNode }) {

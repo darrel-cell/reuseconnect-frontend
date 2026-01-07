@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive review of the **ERP-Sync-CO-e-Engine-Workflow** project (Reuse ITAD Platform) based on the codebase analysis and documentation. It identifies missing features and areas for improvement.
+This document provides a comprehensive review of the **ERP-Sync-CO-e-Engine-Workflow** project (Reuse Connect ITAD Platform) based on the codebase analysis and documentation. It identifies missing features and areas for improvement.
 
 ---
 
