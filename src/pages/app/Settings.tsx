@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenantTheme } from "@/contexts/TenantThemeContext";
+import { authService } from "@/services/auth.service";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDriver, useUpdateDriverProfile } from "@/hooks/useDrivers";
 import { useClientProfile, useUpdateClientProfile } from "@/hooks/useClients";
@@ -43,7 +44,7 @@ const defaultNotifications = {
 };
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { tenantName } = useTenantTheme();
   const queryClient = useQueryClient();
   const isReseller = user?.role === 'reseller';
@@ -65,12 +66,16 @@ const Settings = () => {
 
   // Driver profile form state
   const [driverFormData, setDriverFormData] = useState({
+    name: '',
+    email: '',
     phone: '',
     vehicleReg: '',
     vehicleType: 'van' as 'van' | 'truck' | 'car',
     vehicleFuelType: 'diesel' as 'petrol' | 'diesel' | 'electric',
   });
   const [driverInitialFormData, setDriverInitialFormData] = useState({
+    name: '',
+    email: '',
     phone: '',
     vehicleReg: '',
     vehicleType: 'van' as 'van' | 'truck' | 'car',
@@ -79,6 +84,7 @@ const Settings = () => {
 
   // Client profile form state
   const [clientFormData, setClientFormData] = useState({
+    name: '',
     email: '',
     phone: '',
     organisationName: '',
@@ -86,6 +92,7 @@ const Settings = () => {
     address: '',
   });
   const [clientInitialFormData, setClientInitialFormData] = useState({
+    name: '',
     email: '',
     phone: '',
     organisationName: '',
@@ -95,6 +102,7 @@ const Settings = () => {
 
   // Reseller / Admin organisation details state
   const [orgFormData, setOrgFormData] = useState({
+    name: '',
     organisationName: '',
     registrationNumber: '',
     address: '',
@@ -102,6 +110,7 @@ const Settings = () => {
     phone: '',
   });
   const [orgInitialFormData, setOrgInitialFormData] = useState({
+    name: '',
     organisationName: '',
     registrationNumber: '',
     address: '',
@@ -113,6 +122,8 @@ const Settings = () => {
   useEffect(() => {
     if (driverProfile && isDriver) {
       const next = {
+        name: user?.name || '',
+        email: user?.email || '',
         phone: driverProfile.phone || '',
         vehicleReg: driverProfile.vehicleReg || '',
         vehicleType: driverProfile.vehicleType || 'van',
@@ -120,13 +131,26 @@ const Settings = () => {
       };
       setDriverFormData(next);
       setDriverInitialFormData(next);
+    } else if (isDriver && !driverProfile && !isLoadingDriver) {
+      // Initialize with defaults if no profile exists
+      const next = {
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: '',
+        vehicleReg: '',
+        vehicleType: 'van' as 'van' | 'truck' | 'car',
+        vehicleFuelType: 'diesel' as 'petrol' | 'diesel' | 'electric',
+      };
+      setDriverFormData(next);
+      setDriverInitialFormData(next);
     }
-  }, [driverProfile, isDriver]);
+  }, [driverProfile, isDriver, isLoadingDriver, user?.name, user?.email]);
 
   // Load client profile data when available
   useEffect(() => {
     if (clientProfile && isClient) {
       const next = {
+        name: user?.name || '',
         email: clientProfile.email || '',
         phone: clientProfile.phone || '',
         // When a real client profile exists, use its organisationName (no mock fallback)
@@ -139,6 +163,7 @@ const Settings = () => {
     } else if (isClient && !clientProfile && !isLoadingClient) {
       // Initialize with empty values if no profile exists
       const next = {
+        name: user?.name || '',
         email: user?.email || '',
         phone: '',
         // After accept invitation, organisation name should be empty for client role
@@ -149,7 +174,7 @@ const Settings = () => {
       setClientFormData(next);
       setClientInitialFormData(next);
     }
-  }, [clientProfile, isClient, isLoadingClient, user?.email, tenantName]);
+  }, [clientProfile, isClient, isLoadingClient, user?.email, user?.name, tenantName]);
 
   // Load organisation details for admin / reseller from API
   useEffect(() => {
@@ -159,6 +184,7 @@ const Settings = () => {
     if (organisationProfile) {
       // Load from API
       const next = {
+        name: user?.name || '',
         organisationName: organisationProfile.organisationName || '',
         registrationNumber: organisationProfile.registrationNumber || '',
         address: organisationProfile.address || '',
@@ -170,6 +196,7 @@ const Settings = () => {
     } else {
       // No profile exists yet - initialize with defaults
       const next = {
+        name: user?.name || '',
         organisationName: isAdmin ? (tenantName || user?.tenantName || '') : '',
         registrationNumber: '',
         address: '',
@@ -179,7 +206,7 @@ const Settings = () => {
       setOrgFormData(next);
       setOrgInitialFormData(next);
     }
-  }, [organisationProfile, isLoadingOrgProfile, isAdmin, isReseller, tenantName, user?.tenantName, user?.email]);
+  }, [organisationProfile, isLoadingOrgProfile, isAdmin, isReseller, tenantName, user?.tenantName, user?.email, user?.name]);
 
   const isResellerProfileComplete = isReseller && !!(
     organisationProfile &&
@@ -216,6 +243,8 @@ const Settings = () => {
   const hasDriverProfileChanges =
     isDriver &&
     (
+      driverFormData.name.trim() !== driverInitialFormData.name.trim() ||
+      driverFormData.email.trim() !== driverInitialFormData.email.trim() ||
       driverFormData.phone.trim() !== driverInitialFormData.phone.trim() ||
       driverFormData.vehicleReg.trim() !== driverInitialFormData.vehicleReg.trim() ||
       driverFormData.vehicleType !== driverInitialFormData.vehicleType ||
@@ -225,6 +254,7 @@ const Settings = () => {
   const hasClientProfileChanges =
     isClient &&
     (
+      clientFormData.name.trim() !== clientInitialFormData.name.trim() ||
       clientFormData.email.trim() !== clientInitialFormData.email.trim() ||
       clientFormData.phone.trim() !== clientInitialFormData.phone.trim() ||
       clientFormData.organisationName.trim() !== clientInitialFormData.organisationName.trim() ||
@@ -235,6 +265,24 @@ const Settings = () => {
   const handleSaveDriverProfile = () => {
     if (!user?.id) return;
 
+    if (!driverFormData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!driverFormData.email.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(driverFormData.email.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (!driverFormData.phone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
     if (!driverFormData.vehicleReg.trim()) {
       toast.error("Vehicle registration number is required");
       return;
@@ -244,16 +292,35 @@ const Settings = () => {
       {
         driverId: user.id,
         data: {
-          phone: driverFormData.phone || undefined,
+          name: driverFormData.name.trim(),
+          email: driverFormData.email.trim(),
+          phone: driverFormData.phone.trim(),
           vehicleReg: driverFormData.vehicleReg,
           vehicleType: driverFormData.vehicleType,
           vehicleFuelType: driverFormData.vehicleFuelType,
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          const updatedData = {
+            name: driverFormData.name.trim(),
+            email: driverFormData.email.trim(),
+            phone: driverFormData.phone.trim(),
+            vehicleReg: driverFormData.vehicleReg.trim(),
+            vehicleType: driverFormData.vehicleType,
+            vehicleFuelType: driverFormData.vehicleFuelType,
+          };
+          setDriverInitialFormData(updatedData);
           toast.success("Driver profile updated successfully");
           queryClient.invalidateQueries({ queryKey: ['drivers', user.id] });
+          // Refresh auth to get updated user name and email
+          const auth = await authService.getCurrentAuth();
+          if (auth && auth.user) {
+            // Update user in context by reloading page to refresh all user data
+            setTimeout(() => {
+              window.location.reload();
+            }, 500); // Small delay to ensure toast is visible
+          }
         },
         onError: (error) => {
           toast.error("Failed to update driver profile", {
@@ -350,16 +417,26 @@ const Settings = () => {
                 </div>
               ) : (
                 <>
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
                     <div className="space-y-2">
                       <Label htmlFor="driverName">Full Name</Label>
-                      <Input id="driverName" value={user?.name || ''} disabled />
-                      <p className="text-xs text-muted-foreground">Name cannot be changed here</p>
+                      <Input 
+                        id="driverName" 
+                        value={driverFormData.name}
+                        onChange={(e) => setDriverFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="driverEmail">Email</Label>
-                      <Input id="driverEmail" type="email" value={user?.email || ''} disabled />
-                      <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
+                      <Input 
+                        id="driverEmail" 
+                        type="email"
+                        placeholder="driver@example.com"
+                        value={driverFormData.email}
+                        onChange={(e) => setDriverFormData(prev => ({ ...prev, email: e.target.value }))}
+                        required
+                      />
                     </div>
                   </div>
                   <Separator />
@@ -371,7 +448,15 @@ const Settings = () => {
                         type="tel"
                         placeholder="+44 7700 900123"
                         value={driverFormData.phone}
-                        onChange={(e) => setDriverFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Only allow numbers, spaces, hyphens, parentheses, and plus sign at the start
+                          const phoneRegex = /^[+]?[0-9\s\-()]*$/;
+                          if (phoneRegex.test(value) || value === '') {
+                            setDriverFormData(prev => ({ ...prev, phone: value }));
+                          }
+                        }}
+                        required
                       />
                     </div>
                     <div className="space-y-2">
@@ -432,6 +517,9 @@ const Settings = () => {
                       size="lg"
                       disabled={
                         updateDriverProfile.isPending ||
+                        !driverFormData.name.trim() ||
+                        !driverFormData.email.trim() ||
+                        !driverFormData.phone.trim() ||
                         !driverFormData.vehicleReg.trim() ||
                         !hasDriverProfileChanges
                       }
@@ -456,7 +544,7 @@ const Settings = () => {
         </motion.div>
       )}
 
-      {/* Profile Settings - For Clients (merged with Organisation Details) */}
+      {/* Organisation Settings - For Clients (aligned with Admin/Reseller style) */}
       {isClient && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -467,10 +555,10 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-5 w-5" />
-                Client Profile & Organisation Details
+                Organisation Details
               </CardTitle>
               <CardDescription>
-                Complete your contact information and organisation details to access all features
+                Your organisation information used for bookings, client-facing communications, reports, and certificates
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -483,14 +571,20 @@ const Settings = () => {
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-sm font-medium mb-3">Contact Information</h4>
+                      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="clientName">Contact Name</Label>
+                          <Input 
+                            id="clientName" 
+                            value={clientFormData.name}
+                            onChange={(e) => setClientFormData(prev => ({ ...prev, name: e.target.value }))}
+                            required
+                          />
+                        </div>
+                      </div>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="clientName">Full Name</Label>
-                          <Input id="clientName" value={user?.name || ''} disabled />
-                          <p className="text-xs text-muted-foreground">Name cannot be changed here</p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="clientEmail">Email Address *</Label>
+                          <Label htmlFor="clientEmail">Email Address</Label>
                           <Input 
                             id="clientEmail" 
                             type="email"
@@ -500,16 +594,21 @@ const Settings = () => {
                             required
                           />
                         </div>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-4 mt-4">
                         <div className="space-y-2">
-                          <Label htmlFor="clientPhone">Phone Number *</Label>
+                          <Label htmlFor="clientPhone">Phone Number</Label>
                           <Input 
                             id="clientPhone" 
                             type="tel"
                             placeholder="+44 20 1234 5678"
                             value={clientFormData.phone}
-                            onChange={(e) => setClientFormData(prev => ({ ...prev, phone: e.target.value }))}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Only allow numbers, spaces, hyphens, parentheses, and plus sign at the start
+                              const phoneRegex = /^[+]?[0-9\s\-()]*$/;
+                              if (phoneRegex.test(value) || value === '') {
+                                setClientFormData(prev => ({ ...prev, phone: value }));
+                              }
+                            }}
                             required
                           />
                         </div>
@@ -519,10 +618,10 @@ const Settings = () => {
                     <Separator />
 
                     <div>
-                      <h4 className="text-sm font-medium mb-3">Organisation Details</h4>
+                      <h4 className="text-sm font-medium mb-3">Organisation Information</h4>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="orgName">Organisation Name *</Label>
+                          <Label htmlFor="orgName">Organisation Name</Label>
                           <Input 
                             id="orgName" 
                             value={clientFormData.organisationName}
@@ -531,7 +630,7 @@ const Settings = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="regNumber">Registration Number *</Label>
+                          <Label htmlFor="regNumber">Registration Number</Label>
                           <Input 
                             id="regNumber" 
                             value={clientFormData.registrationNumber}
@@ -541,7 +640,7 @@ const Settings = () => {
                         </div>
                       </div>
                       <div className="space-y-2 mt-4">
-                        <Label htmlFor="address">Registered Address *</Label>
+                        <Label htmlFor="address">Registered Address</Label>
                         <Input 
                           id="address" 
                           value={clientFormData.address}
@@ -552,11 +651,11 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-4">
+                  <div className="flex justify-end pt-2">
                     <Button
                       onClick={() => {
-                        if (!clientFormData.email.trim() || !clientFormData.phone.trim()) {
-                          toast.error("Email and phone number are required");
+                        if (!clientFormData.name.trim() || !clientFormData.email.trim() || !clientFormData.phone.trim()) {
+                          toast.error("Contact name, email and phone number are required");
                           return;
                         }
                         if (!clientFormData.organisationName.trim() || !clientFormData.registrationNumber.trim() || !clientFormData.address.trim()) {
@@ -565,6 +664,7 @@ const Settings = () => {
                         }
                         updateClientProfile.mutate(
                           {
+                            name: clientFormData.name.trim(),
                             email: clientFormData.email.trim(),
                             phone: clientFormData.phone.trim(),
                             organisationName: clientFormData.organisationName.trim(),
@@ -572,7 +672,21 @@ const Settings = () => {
                             address: clientFormData.address.trim(),
                           },
                           {
-                            onSuccess: () => {
+                            onSuccess: async () => {
+                              setClientInitialFormData({
+                                name: clientFormData.name.trim(),
+                                email: clientFormData.email.trim(),
+                                phone: clientFormData.phone.trim(),
+                                organisationName: clientFormData.organisationName.trim(),
+                                registrationNumber: clientFormData.registrationNumber.trim(),
+                                address: clientFormData.address.trim(),
+                              });
+                              // Refresh auth to get updated user name
+                              const auth = await authService.getCurrentAuth();
+                              if (auth && auth.user) {
+                                // Update user in context by reloading page to refresh all user data
+                                window.location.reload();
+                              }
                               toast.success("Client profile updated successfully");
                             },
                             onError: (error) => {
@@ -585,6 +699,7 @@ const Settings = () => {
                       }}
                       disabled={
                         updateClientProfile.isPending || 
+                        !clientFormData.name.trim() ||
                         !clientFormData.email.trim() || 
                         !clientFormData.phone.trim() ||
                         !clientFormData.organisationName.trim() ||
@@ -601,7 +716,7 @@ const Settings = () => {
                       ) : (
                         <>
                           <Save className="mr-2 h-4 w-4" />
-                          Save Client Profile
+                          Save Organisation Details
                         </>
                       )}
                     </Button>
@@ -632,86 +747,110 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="resellerFullName">Contact Name</Label>
-                  <Input
-                    id="resellerFullName"
-                    value={user?.name || ''}
-                    disabled
-                  />
-                  <p className="text-xs text-muted-foreground">Name cannot be changed here</p>
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Contact Information</h4>
+                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="resellerFullName">Contact Name</Label>
+                      <Input
+                        id="resellerFullName"
+                        value={orgFormData.name}
+                        onChange={(e) =>
+                          setOrgFormData(prev => ({ ...prev, name: e.target.value }))
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={orgFormData.email}
+                        onChange={(e) =>
+                          setOrgFormData(prev => ({ ...prev, email: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+44 20 1234 5678"
+                        value={orgFormData.phone}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Only allow numbers, spaces, hyphens, parentheses, and plus sign at the start
+                          const phoneRegex = /^[+]?[0-9\s\-()]*$/;
+                          if (phoneRegex.test(value) || value === '') {
+                            setOrgFormData(prev => ({ ...prev, phone: value }));
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="orgName">Organisation Name</Label>
-                  <Input
-                    id="orgName"
-                    value={orgFormData.organisationName}
-                    onChange={(e) =>
-                      setOrgFormData(prev => ({ ...prev, organisationName: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="regNumber">Registration Number</Label>
-                  <Input
-                    id="regNumber"
-                    value={orgFormData.registrationNumber}
-                    onChange={(e) =>
-                      setOrgFormData(prev => ({ ...prev, registrationNumber: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Registered Address</Label>
-                <Input
-                  id="address"
-                  value={orgFormData.address}
-                  onChange={(e) =>
-                    setOrgFormData(prev => ({ ...prev, address: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Primary Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={orgFormData.email}
-                    onChange={(e) =>
-                      setOrgFormData(prev => ({ ...prev, email: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={orgFormData.phone}
-                    onChange={(e) =>
-                      setOrgFormData(prev => ({ ...prev, phone: e.target.value }))
-                    }
-                  />
+
+                <Separator />
+
+                {/* Organisation Details */}
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Organisation Information</h4>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="orgName">Organisation Name</Label>
+                      <Input
+                        id="orgName"
+                        value={orgFormData.organisationName}
+                        onChange={(e) =>
+                          setOrgFormData(prev => ({ ...prev, organisationName: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="regNumber">Registration Number</Label>
+                      <Input
+                        id="regNumber"
+                        value={orgFormData.registrationNumber}
+                        onChange={(e) =>
+                          setOrgFormData(prev => ({ ...prev, registrationNumber: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="address">Registered Address</Label>
+                    <Input
+                      id="address"
+                      value={orgFormData.address}
+                      onChange={(e) =>
+                        setOrgFormData(prev => ({ ...prev, address: e.target.value }))
+                      }
+                    />
+                  </div>
                 </div>
               </div>
               {(isAdmin || isReseller) && (
                 <div className="flex justify-end pt-2">
                   <Button
                     onClick={() => {
-                      if (!orgFormData.organisationName.trim() ||
+                      if (!orgFormData.name.trim() ||
+                          !orgFormData.organisationName.trim() ||
                           !orgFormData.registrationNumber.trim() ||
                           !orgFormData.address.trim() ||
                           !orgFormData.email.trim() ||
                           !orgFormData.phone.trim()) {
-                        toast.error("All organisation details are required");
+                        toast.error("All fields are required");
                         return;
                       }
 
                       const payload = {
+                        name: orgFormData.name.trim(),
                         organisationName: orgFormData.organisationName.trim(),
                         registrationNumber: orgFormData.registrationNumber.trim(),
                         address: orgFormData.address.trim(),
@@ -720,8 +859,14 @@ const Settings = () => {
                       };
 
                       updateOrganisationProfile.mutate(payload, {
-                        onSuccess: () => {
+                        onSuccess: async () => {
                           setOrgInitialFormData(payload);
+                          // Refresh auth to get updated user name
+                          const auth = await authService.getCurrentAuth();
+                          if (auth && auth.user) {
+                            // Update user in context by reloading page to refresh all user data
+                            window.location.reload();
+                          }
                           toast.success("Organisation details saved successfully");
                         },
                         onError: (error) => {
@@ -734,12 +879,14 @@ const Settings = () => {
                     disabled={
                       updateOrganisationProfile.isPending ||
                       // Require all fields AND at least one has changed from last saved values
+                      !orgFormData.name.trim() ||
                       !orgFormData.organisationName.trim() ||
                       !orgFormData.registrationNumber.trim() ||
                       !orgFormData.address.trim() ||
                       !orgFormData.email.trim() ||
                       !orgFormData.phone.trim() ||
                       (
+                        orgFormData.name.trim() === orgInitialFormData.name.trim() &&
                         orgFormData.organisationName.trim() === orgInitialFormData.organisationName.trim() &&
                         orgFormData.registrationNumber.trim() === orgInitialFormData.registrationNumber.trim() &&
                         orgFormData.address.trim() === orgInitialFormData.address.trim() &&

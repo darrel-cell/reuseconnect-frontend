@@ -108,23 +108,23 @@ class ClientsService {
     return null;
   }
 
-  async updateClientProfile(data: { email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
+  async updateClientProfile(data: { name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
     if (!USE_MOCK_API) {
       return this.updateClientProfileAPI(data);
     }
     return this.updateClientProfileMock(data);
   }
 
-  private async updateClientProfileAPI(data: { email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
+  private async updateClientProfileAPI(data: { name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
     const response = await apiClient.patch<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }>('/clients/profile/me', data);
     return response;
   }
 
-  private async updateClientProfileMock(data: { email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
+  private async updateClientProfileMock(data: { name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string }): Promise<{ id: string; name: string; email: string; phone: string; organisationName: string; registrationNumber: string; address: string; hasProfile: boolean }> {
     await delay(500);
     return {
       id: 'mock-client-id',
-      name: 'Mock Client',
+      name: data.name,
       email: data.email,
       phone: data.phone,
       organisationName: data.organisationName,

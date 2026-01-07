@@ -22,6 +22,7 @@ export interface OrganisationProfile {
 }
 
 export interface OrganisationProfileData {
+  name: string;
   organisationName: string;
   registrationNumber: string;
   address: string;
