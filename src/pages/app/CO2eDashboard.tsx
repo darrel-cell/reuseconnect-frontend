@@ -179,14 +179,6 @@ const CO2eDashboard = () => {
     },
   ];
 
-  // Debug: Log user info to help diagnose
-  console.log('[CO2eDashboard Debug]', {
-    user: user ? { id: user.id, role: user.role, email: user.email } : null,
-    isReseller,
-    clientsCount: clients.length,
-    clientCO2StatsCount: clientCO2Stats.length,
-  });
-
   // For resellers: show split layout with client list on left
   // Check both user?.role and isReseller to ensure we catch the reseller role
   if (user && (user.role === 'reseller' || isReseller)) {

@@ -28,7 +28,6 @@ import BookingDetail from "./pages/app/BookingDetail";
 import BookingTimeline from "./pages/app/BookingTimeline";
 import BookingCertificates from "./pages/app/BookingCertificates";
 import BookingGradingReport from "./pages/app/BookingGradingReport";
-import Sites from "./pages/app/Sites";
 import JobHistory from "./pages/app/JobHistory";
 import Approval from "./pages/app/admin/Approval";
 import BookingApproval from "./pages/app/admin/BookingApproval";
@@ -153,14 +152,6 @@ const App = () => (
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <Drivers />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/sites"
-                  element={
-                    <ProtectedRoute allowedRoles={['client']}>
-                      <Sites />
                     </ProtectedRoute>
                   }
                 />

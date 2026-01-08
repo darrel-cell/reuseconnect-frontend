@@ -10,7 +10,6 @@ import {
   Users,
   ClipboardList,
   UserPlus,
-  MapPin,
   Clock,
   Route as RouteIcon
 } from "lucide-react";
@@ -59,7 +58,6 @@ const getMainNavItems = (role: string) => {
     { title: "Users", url: "/users", icon: Users, roles: ['admin'] },
     { title: "Clients", url: "/clients", icon: Building2, roles: ['admin', 'reseller'] },
     { title: "Drivers", url: "/admin/drivers", icon: Truck, roles: ['admin'] },
-    { title: "Sites", url: "/sites", icon: MapPin, roles: ['client'] },
     { title: "CO₂e Dashboard", url: "/co2e", icon: Leaf, roles: ['admin', 'client', 'reseller'] },
     { title: "Documents", url: "/documents", icon: FileText, roles: ['admin', 'client', 'reseller'] },
   ];

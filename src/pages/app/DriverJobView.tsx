@@ -308,21 +308,7 @@ const DriverJobView = () => {
       return;
     }
 
-    // Debug: Log evidence data before submission
-    // Submitting evidence
-      jobId: id,
-      currentStatus: job?.status,
-      nextStatus,
-      photosCount: photos.length,
-      photos: photos,
-      hasSignature: !!signature,
-      signature: signature ? 'present' : 'missing',
-      sealNumbersCount: sealNumbers.length,
-      sealNumbers: sealNumbers,
-      hasNotes: !!notes,
-      notes: notes,
-    });
-
+    // Debug logging removed to avoid noisy console output
     // Save evidence for target status first, then update status to next
     if (!evidenceTargetStatus) {
       toast.error("Cannot save evidence", {

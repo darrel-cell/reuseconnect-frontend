@@ -49,11 +49,7 @@ class NotificationsService {
     const endpoint = `/notifications${queryString ? `?${queryString}` : ''}`;
 
     const response = await apiClient.get<{ notifications: Notification[]; total: number }>(endpoint);
-    
-      notificationsCount: response?.notifications?.length || 0,
-      total: response?.total || 0,
-    });
-    
+
     return {
       notifications: response.notifications || [],
       total: response.total || 0,

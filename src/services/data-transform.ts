@@ -199,10 +199,6 @@ function transformCertificate(cert: BackendCertificate): Certificate {
  */
 export function transformJob(backendJob: BackendJob): Job {
   const transformedEvidence = transformEvidence(backendJob.evidence);
-      length: Array.isArray(transformedEvidence) ? transformedEvidence.length : 'N/A',
-      value: transformedEvidence,
-    });
-  }
   
   return {
     id: backendJob.id,
