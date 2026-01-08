@@ -22,12 +22,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBooking, useApproveBooking, useUpdateBookingStatus, useCompleteBooking } from "@/hooks/useBookings";
+import { useBooking, useApproveBooking, useUpdateBookingStatus, useCompleteBooking, useCheckJobIdUnique } from "@/hooks/useBookings";
 import { useGradingRecords } from "@/hooks/useGrading";
 import { useSanitisationRecords } from "@/hooks/useSanitisation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const BookingApproval = () => {
@@ -39,6 +38,7 @@ const BookingApproval = () => {
   const approveBooking = useApproveBooking();
   const cancelBooking = useUpdateBookingStatus();
   const completeBooking = useCompleteBooking();
+  const checkJobIdUnique = useCheckJobIdUnique();
   const [approvalNotes, setApprovalNotes] = useState("");
   const [erpJobNumber, setErpJobNumber] = useState("");
   const [cancellationNotes, setCancellationNotes] = useState("");
@@ -47,7 +47,7 @@ const BookingApproval = () => {
   const isGraded = booking?.status === 'graded';
   const isPending = booking?.status === 'pending';
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!id) return;
 
     if (!erpJobNumber.trim()) {
@@ -57,22 +57,42 @@ const BookingApproval = () => {
       return;
     }
 
-    approveBooking.mutate(
-      { bookingId: id, erpJobNumber: erpJobNumber.trim(), notes: approvalNotes || undefined },
-      {
-        onSuccess: () => {
-          toast.success("Booking approved successfully!", {
-            description: "The booking has been approved and is now active.",
-          });
-          navigate("/admin/bookings");
-        },
-        onError: (error) => {
-          toast.error("Failed to approve booking", {
-            description: error instanceof Error ? error.message : "Please try again.",
-          });
-        },
+    // Check if Job ID is unique before approving
+    try {
+      const result = await checkJobIdUnique.mutateAsync({
+        bookingId: id,
+        erpJobNumber: erpJobNumber.trim(),
+      });
+
+      if (!result.isUnique) {
+        toast.error("Duplicate Job ID", {
+          description: `Job ID "${erpJobNumber.trim()}" already exists. Please enter a unique Job ID.`,
+        });
+        return;
       }
-    );
+
+      // Job ID is unique, proceed with approval
+      approveBooking.mutate(
+        { bookingId: id, erpJobNumber: erpJobNumber.trim(), notes: approvalNotes || undefined },
+        {
+          onSuccess: () => {
+            toast.success("Booking approved successfully!", {
+              description: "The booking has been approved and is now active.",
+            });
+            navigate("/admin/bookings");
+          },
+          onError: (error) => {
+            toast.error("Failed to approve booking", {
+              description: error instanceof Error ? error.message : "Please try again.",
+            });
+          },
+        }
+      );
+    } catch (error) {
+      toast.error("Failed to check Job ID", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -509,7 +529,7 @@ const BookingApproval = () => {
                       className="font-mono"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Enter the unique Job ID from the ERP system. This will be used to link the booking to the ERP job.
+                      Enter the unique Job ID from the ERP system. This will be used to link the booking to the ERP job. The system will verify uniqueness when you approve.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -566,9 +586,14 @@ const BookingApproval = () => {
                       variant="success"
                       size="lg"
                       onClick={handleApprove}
-                      disabled={approveBooking.isPending || !erpJobNumber.trim()}
+                      disabled={approveBooking.isPending || checkJobIdUnique.isPending || !erpJobNumber.trim()}
                     >
-                      {approveBooking.isPending ? (
+                      {checkJobIdUnique.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : approveBooking.isPending ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Approving...

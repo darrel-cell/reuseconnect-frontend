@@ -50,10 +50,6 @@ class NotificationsService {
 
     const response = await apiClient.get<{ notifications: Notification[]; total: number }>(endpoint);
     
-    // Debug logging
-    console.log('[Notifications Service] API Response:', {
-      endpoint,
-      response,
       notificationsCount: response?.notifications?.length || 0,
       total: response?.total || 0,
     });

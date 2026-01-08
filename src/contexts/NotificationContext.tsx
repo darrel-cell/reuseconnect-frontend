@@ -126,18 +126,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     queryKey: ['notifications', user?.id],
     queryFn: async () => {
       if (!user?.id) {
-        console.log('[NotificationContext] No user ID, returning empty notifications');
         return { notifications: [], total: 0 };
       }
       try {
         const result = await notificationsService.getNotifications();
-        console.log('[NotificationContext] Fetched notifications:', {
-          userId: user.id,
-          userRole: user.role,
-          notificationsCount: result.notifications.length,
-          total: result.total,
-          notifications: result.notifications,
-        });
         return result;
       } catch (error) {
         console.error('[NotificationContext] Failed to fetch notifications:', error);
@@ -157,7 +149,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   });
 
   // Fetch unread count
-  const { data: unreadCountData } = useQuery({
+  const { data: unreadCountData, refetch: refetchUnreadCount } = useQuery({
     queryKey: ['notifications', 'unread-count', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
@@ -169,7 +161,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }
     },
     enabled: !!user?.id,
-    refetchInterval: 30000,
+    refetchInterval: 30000, // Keep polling every 30 seconds
   });
 
   const notifications = notificationsData?.notifications || [];
@@ -182,8 +174,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // Invalidate and refetch notifications list to show updated read status
       await queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
       await refetchNotifications();
-      // Invalidate unread count to update the badge
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
+      // Immediately refetch unread count to update the badge
+      await refetchUnreadCount();
     },
   });
 
@@ -194,8 +186,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // Invalidate and refetch notifications list to show updated read status
       await queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
       await refetchNotifications();
-      // Invalidate unread count to update the badge
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
+      // Immediately refetch unread count to update the badge
+      await refetchUnreadCount();
     },
   });
 
@@ -223,8 +215,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const refreshNotifications = () => {
     // Fetch notifications list when explicitly called (e.g., when bell icon is clicked)
     refetchNotifications();
-    // Also invalidate unread count to refresh the badge
-    queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', user?.id] });
+    // Also immediately refetch unread count to update the badge without waiting for polling
+    refetchUnreadCount();
   };
 
   return (

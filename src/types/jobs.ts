@@ -30,6 +30,15 @@ export interface Job {
   charityPercent: number;
   roundTripDistanceKm?: number | null; // From booking (actual calculated distance)
   roundTripDistanceMiles?: number | null; // From booking (actual calculated distance)
+  // Driver journey fields (entered before starting journey in routed status)
+  dial2Collection?: string | null;
+  securityRequirements?: string | null;
+  idRequired?: string | null;
+  loadingBayLocation?: string | null;
+  vehicleHeightRestrictions?: string | null;
+  doorLiftSize?: string | null;
+  roadWorksPublicEvents?: string | null;
+  manualHandlingRequirements?: string | null;
   evidence?: Evidence | Evidence[]; // Can be single evidence (backward compat) or array of evidence per status
   certificates: Certificate[];
 }

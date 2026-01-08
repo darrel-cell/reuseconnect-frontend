@@ -710,84 +710,49 @@ class BookingService {
       }
     }
 
-    // Auto-create commission if reseller exists
-    if (booking.resellerId && booking.resellerName) {
-      try {
-        const { mockCommissions } = await import('@/mocks/mock-entities');
-        const commissionPercent = 10; // Default commission percentage (would come from reseller config)
-        const commissionAmount = Math.round(booking.estimatedBuyback * (commissionPercent / 100));
-        const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-        
-        const newCommission = {
-          id: `comm-${Date.now()}`,
-          resellerId: booking.resellerId,
-          resellerName: booking.resellerName,
-          clientId: booking.clientId,
-          clientName: booking.clientName,
-          jobId: booking.jobId || '',
-          jobNumber: booking.jobId ? `ERP-${booking.jobId}` : '',
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          commissionPercent,
-          jobValue: booking.estimatedBuyback,
-          commissionAmount,
-          status: 'pending' as const,
-          period,
-          createdAt: new Date().toISOString(),
-        };
-        
-        mockCommissions.push(newCommission);
-      } catch (error) {
-        console.error('Failed to create commission:', error);
-      }
-    }
-
-    // Auto-create invoice
-    try {
-      const { mockInvoices } = await import('@/mocks/mock-entities');
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${String(mockInvoices.length + 1).padStart(5, '0')}`;
-      const issueDate = new Date().toISOString().split('T')[0];
-      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days from now
-      
-      // Create invoice items from booking assets
-      const items = booking.assets.map(asset => {
-        const unitPrice = Math.round(booking.estimatedBuyback / booking.assets.reduce((sum, a) => sum + a.quantity, 0));
-        return {
-          description: `${asset.categoryName} Collection & Processing (${asset.quantity} units)`,
-          quantity: asset.quantity,
-          unitPrice,
-          total: unitPrice * asset.quantity,
-        };
-      });
-      
-      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-      const tax = Math.round(subtotal * 0.2); // 20% VAT
-      const total = subtotal + tax;
-      
-      const newInvoice = {
-        id: `inv-${Date.now()}`,
-        invoiceNumber,
-        clientId: booking.clientId,
-        clientName: booking.clientName,
-        jobId: booking.jobId || '',
-        jobNumber: booking.jobId ? `ERP-${booking.jobId}` : '',
-        issueDate,
-        dueDate,
-        amount: subtotal,
-        status: 'draft' as const,
-        items,
-        subtotal,
-        tax,
-        total,
-        downloadUrl: '#',
-      };
-      
-      mockInvoices.push(newInvoice);
-    } catch (error) {
-      console.error('Failed to create invoice:', error);
-    }
 
     return booking;
+  }
+
+  async checkJobIdUnique(bookingId: string, erpJobNumber: string): Promise<{ isUnique: boolean; erpJobNumber: string }> {
+    // Use real API if not using mocks
+    if (!USE_MOCK_API) {
+      return this.checkJobIdUniqueAPI(bookingId, erpJobNumber);
+    }
+    
+    return this.checkJobIdUniqueMock(bookingId, erpJobNumber);
+  }
+
+  private async checkJobIdUniqueAPI(bookingId: string, erpJobNumber: string): Promise<{ isUnique: boolean; erpJobNumber: string }> {
+    const response = await apiClient.get<{ isUnique: boolean; erpJobNumber: string }>(
+      `/bookings/${bookingId}/check-job-id?erpJobNumber=${encodeURIComponent(erpJobNumber)}`
+    );
+    return response;
+  }
+
+  private async checkJobIdUniqueMock(bookingId: string, erpJobNumber: string): Promise<{ isUnique: boolean; erpJobNumber: string }> {
+    // Reduced delay for faster response
+    await delay(100);
+    
+    // Check if any existing booking or job has this erpJobNumber
+    const { mockBookings } = await import('@/mocks/mock-entities');
+    const { mockJobs } = await import('@/mocks/mock-entities');
+    
+    const trimmedJobNumber = erpJobNumber.trim();
+    
+    // Check bookings (excluding current booking) and jobs
+    const existingBooking = mockBookings.find(
+      b => b.id !== bookingId && b.erpJobNumber && b.erpJobNumber.trim() === trimmedJobNumber
+    );
+    
+    const existingJob = mockJobs.find(
+      j => j.erpJobNumber && j.erpJobNumber.trim() === trimmedJobNumber
+    );
+    
+    return {
+      isUnique: !existingBooking && !existingJob,
+      erpJobNumber: trimmedJobNumber,
+    };
   }
 
   async approveBooking(bookingId: string, erpJobNumber: string, notes?: string): Promise<Booking> {

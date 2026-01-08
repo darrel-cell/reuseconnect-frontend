@@ -69,3 +69,31 @@ export function useUpdateJobEvidence() {
   });
 }
 
+export function useUpdateJobJourneyFields() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ 
+      jobId, 
+      fields 
+    }: { 
+      jobId: string; 
+      fields: {
+        dial2Collection?: string;
+        securityRequirements?: string;
+        idRequired?: string;
+        loadingBayLocation?: string;
+        vehicleHeightRestrictions?: string;
+        doorLiftSize?: string;
+        roadWorksPublicEvents?: string;
+        manualHandlingRequirements?: string;
+      };
+    }) =>
+      jobsService.updateJobJourneyFields(jobId, fields),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['job', variables.jobId] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+}
+

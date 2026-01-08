@@ -137,15 +137,6 @@ function transformDriver(driver: BackendDriver | null | undefined): Driver | und
  * Handles both array (new format) and single object (backward compatibility)
  */
 function transformEvidence(evidence: BackendEvidence[] | BackendEvidence | null | undefined): Evidence[] | Evidence | undefined {
-  // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Frontend Transform] transformEvidence input:', {
-      isArray: Array.isArray(evidence),
-      type: typeof evidence,
-      length: Array.isArray(evidence) ? evidence.length : 'N/A',
-      value: evidence,
-    });
-  }
   
   if (!evidence) return undefined;
   
@@ -162,17 +153,6 @@ function transformEvidence(evidence: BackendEvidence[] | BackendEvidence | null 
         : undefined,
     }));
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Frontend Transform] transformEvidence output (array):', {
-        count: transformed.length,
-        items: transformed.map((ev, idx) => ({
-          index: idx,
-          status: ev.status,
-          photosCount: ev.photos.length,
-          hasSignature: !!ev.signature,
-        })),
-      });
-    }
     
     return transformed;
   }
@@ -189,9 +169,6 @@ function transformEvidence(evidence: BackendEvidence[] | BackendEvidence | null 
       : undefined,
   };
   
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Frontend Transform] transformEvidence output (single object):', transformed);
-  }
   
   return transformed;
 }
@@ -221,22 +198,7 @@ function transformCertificate(cert: BackendCertificate): Certificate {
  * Transform backend job to frontend format
  */
 export function transformJob(backendJob: BackendJob): Job {
-  // Debug logging for evidence
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Frontend Transform] transformJob - backendJob.evidence:', {
-      isArray: Array.isArray(backendJob.evidence),
-      type: typeof backendJob.evidence,
-      length: Array.isArray(backendJob.evidence) ? backendJob.evidence.length : 'N/A',
-      value: backendJob.evidence,
-    });
-  }
-  
   const transformedEvidence = transformEvidence(backendJob.evidence);
-  
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Frontend Transform] transformJob - transformedEvidence:', {
-      isArray: Array.isArray(transformedEvidence),
-      type: typeof transformedEvidence,
       length: Array.isArray(transformedEvidence) ? transformedEvidence.length : 'N/A',
       value: transformedEvidence,
     });

@@ -752,18 +752,18 @@ const Settings = () => {
                 <div>
                   <h4 className="text-sm font-medium mb-3">Contact Information</h4>
                   <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="resellerFullName">Contact Name</Label>
-                      <Input
-                        id="resellerFullName"
+                <div className="space-y-2">
+                  <Label htmlFor="resellerFullName">Contact Name</Label>
+                  <Input
+                    id="resellerFullName"
                         value={orgFormData.name}
                         onChange={(e) =>
                           setOrgFormData(prev => ({ ...prev, name: e.target.value }))
                         }
                         required
                       />
-                    </div>
-                  </div>
+                </div>
+              </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
@@ -801,38 +801,38 @@ const Settings = () => {
                 {/* Organisation Details */}
                 <div>
                   <h4 className="text-sm font-medium mb-3">Organisation Information</h4>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="orgName">Organisation Name</Label>
-                      <Input
-                        id="orgName"
-                        value={orgFormData.organisationName}
-                        onChange={(e) =>
-                          setOrgFormData(prev => ({ ...prev, organisationName: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="regNumber">Registration Number</Label>
-                      <Input
-                        id="regNumber"
-                        value={orgFormData.registrationNumber}
-                        onChange={(e) =>
-                          setOrgFormData(prev => ({ ...prev, registrationNumber: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="orgName">Organisation Name</Label>
+                  <Input
+                    id="orgName"
+                    value={orgFormData.organisationName}
+                    onChange={(e) =>
+                      setOrgFormData(prev => ({ ...prev, organisationName: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="regNumber">Registration Number</Label>
+                  <Input
+                    id="regNumber"
+                    value={orgFormData.registrationNumber}
+                    onChange={(e) =>
+                      setOrgFormData(prev => ({ ...prev, registrationNumber: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
                   <div className="space-y-2 mt-4">
-                    <Label htmlFor="address">Registered Address</Label>
-                    <Input
-                      id="address"
-                      value={orgFormData.address}
-                      onChange={(e) =>
-                        setOrgFormData(prev => ({ ...prev, address: e.target.value }))
-                      }
-                    />
-                  </div>
+                <Label htmlFor="address">Registered Address</Label>
+                <Input
+                  id="address"
+                  value={orgFormData.address}
+                  onChange={(e) =>
+                    setOrgFormData(prev => ({ ...prev, address: e.target.value }))
+                  }
+                />
+              </div>
                 </div>
               </div>
               {(isAdmin || isReseller) && (

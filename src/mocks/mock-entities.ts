@@ -1,5 +1,5 @@
 // Additional Mock Entities for Role-Based Features
-// This file contains mock data for: bookings, clients, invoices, commission, users
+// This file contains mock data for: bookings, clients, users
 
 import type { User } from '@/types/auth';
 import type { BookingLifecycleStatus } from '@/types/booking-lifecycle';
@@ -99,50 +99,6 @@ export interface GradingRecord {
   gradedBy: string; // Admin user ID
   notes?: string;
   condition?: string; // Physical condition notes
-}
-
-// Invoice entity
-export interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  clientId: string;
-  clientName: string;
-  jobId: string;
-  jobNumber: string;
-  issueDate: string;
-  dueDate: string;
-  amount: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  items: Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }>;
-  subtotal: number;
-  tax: number;
-  total: number;
-  downloadUrl: string;
-}
-
-// Commission record (for resellers)
-export interface Commission {
-  id: string;
-  resellerId: string;
-  resellerName: string;
-  clientId: string;
-  clientName: string;
-  jobId: string;
-  jobNumber: string;
-  bookingId: string;
-  bookingNumber: string;
-  commissionPercent: number;
-  jobValue: number;
-  commissionAmount: number;
-  status: 'pending' | 'approved' | 'paid';
-  period: string; // YYYY-MM
-  paidDate?: string;
-  createdAt: string;
 }
 
 // Sanitisation record
@@ -695,130 +651,6 @@ export const mockBookings: Booking[] = [
     roundTripDistanceMiles: 28.1,
     createdAt: '2024-11-15',
     createdBy: 'user-2',
-  },
-];
-
-// Mock Invoices
-export const mockInvoices: Invoice[] = [
-  {
-    id: 'inv-001',
-    invoiceNumber: 'INV-2024-00142',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    jobId: 'job-001',
-    jobNumber: 'ERP-2024-00142',
-    issueDate: '2024-12-01',
-    dueDate: '2024-12-31',
-    amount: 5875,
-    status: 'sent',
-    items: [
-      { description: 'Laptop Collection & Processing (45 units)', quantity: 45, unitPrice: 85, total: 3825 },
-      { description: 'Monitor Collection & Processing (30 units)', quantity: 30, unitPrice: 25, total: 750 },
-      { description: 'Phone Collection & Processing (25 units)', quantity: 25, unitPrice: 40, total: 1000 },
-      { description: 'Data Wipe Service', quantity: 1, unitPrice: 300, total: 300 },
-    ],
-    subtotal: 5875,
-    tax: 1175,
-    total: 7050,
-    downloadUrl: '#',
-  },
-  {
-    id: 'inv-002',
-    invoiceNumber: 'INV-2024-00143',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    jobId: 'job-002',
-    jobNumber: 'ERP-2024-00143',
-    issueDate: '2024-12-05',
-    dueDate: '2025-01-04',
-    amount: 1200,
-    status: 'paid',
-    items: [
-      { description: 'Desktop Collection & Processing (20 units)', quantity: 20, unitPrice: 45, total: 900 },
-      { description: 'Printer Collection & Processing (8 units)', quantity: 8, unitPrice: 15, total: 120 },
-      { description: 'Data Wipe Service', quantity: 1, unitPrice: 180, total: 180 },
-    ],
-    subtotal: 1200,
-    tax: 240,
-    total: 1440,
-    downloadUrl: '#',
-  },
-  {
-    id: 'inv-003',
-    invoiceNumber: 'INV-2024-00144',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    jobId: 'job-003',
-    jobNumber: 'ERP-2024-00144',
-    issueDate: '2024-12-10',
-    dueDate: '2025-01-09',
-    amount: 4000,
-    status: 'sent',
-    items: [
-      { description: 'Server Collection & Processing (5 units)', quantity: 5, unitPrice: 250, total: 1250 },
-      { description: 'Network Equipment Collection & Processing (12 units)', quantity: 12, unitPrice: 35, total: 420 },
-      { description: 'Data Wipe Service', quantity: 1, unitPrice: 2330, total: 2330 },
-    ],
-    subtotal: 4000,
-    tax: 800,
-    total: 4800,
-    downloadUrl: '#',
-  },
-];
-
-// Mock Commission Records
-export const mockCommissions: Commission[] = [
-  {
-    id: 'comm-001',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    clientId: 'tenant-4',
-    clientName: 'Green Finance Ltd',
-    jobId: 'job-004',
-    jobNumber: 'ERP-2024-00145',
-    bookingId: 'booking-003',
-    bookingNumber: 'BK-2024-003',
-    commissionPercent: 15,
-    jobValue: 1200,
-    commissionAmount: 180,
-    status: 'approved',
-    period: '2024-12',
-    createdAt: '2024-12-15',
-  },
-  {
-    id: 'comm-002',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    clientId: 'tenant-5',
-    clientName: 'HealthFirst NHS Trust',
-    jobId: 'job-005',
-    jobNumber: 'ERP-2024-00146',
-    bookingId: 'booking-004',
-    bookingNumber: 'BK-2024-004',
-    commissionPercent: 15,
-    jobValue: 4000,
-    commissionAmount: 600,
-    status: 'paid',
-    period: '2024-11',
-    paidDate: '2024-12-01',
-    createdAt: '2024-11-20',
-  },
-  {
-    id: 'comm-003',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    clientId: 'tenant-4',
-    clientName: 'Green Finance Ltd',
-    jobId: 'job-010',
-    jobNumber: 'ERP-2024-00151',
-    bookingId: 'booking-003',
-    bookingNumber: 'BK-2024-003',
-    commissionPercent: 15,
-    jobValue: 15000,
-    commissionAmount: 2250,
-    status: 'pending',
-    period: '2024-12',
-    createdAt: '2024-12-20',
   },
 ];
 

@@ -81,6 +81,14 @@ class ApiClient {
         );
       }
 
+      // Ensure we never return undefined - if data.data is undefined, return appropriate default
+      if (data.data === undefined || data.data === null) {
+        // For array types, return empty array; for other types, return null
+        // We can't determine the type at runtime, so we'll return null
+        // Individual services should handle this case
+        return null as T;
+      }
+
       return data.data as T;
     } catch (error) {
       if (error instanceof ApiError) {

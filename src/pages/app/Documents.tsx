@@ -16,19 +16,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useJobs } from "@/hooks/useJobs";
+import { useDocuments } from "@/hooks/useDocuments";
+import { documentsService } from "@/services/documents.service";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Certificate } from "@/types/jobs";
-
-interface Document {
-  id: string;
-  jobId: string;
-  jobNumber: string;
-  clientName: string;
-  type: Certificate['type'];
-  generatedDate: string;
-  downloadUrl: string;
-}
+import type { Document as DocumentType } from "@/services/documents.service";
 
 const docTypeConfig = {
   "chain-of-custody": {
@@ -56,20 +49,42 @@ const docTypeConfig = {
 const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const { data: jobs = [], isLoading, error } = useJobs();
+  const { data: jobs = [], isLoading: isLoadingJobs } = useJobs();
+  const { data: apiDocuments = [], isLoading: isLoadingDocuments, error } = useDocuments();
 
-  // Generate documents from jobs
-  const allDocuments: Document[] = jobs.flatMap((job) =>
+  // Combine documents from API (Chain of Custody) and job certificates
+  const jobCertificates = jobs.flatMap((job) =>
     job.certificates.map((cert, index) => ({
       id: `${job.id}-${cert.type}-${index}`,
       jobId: job.id,
       jobNumber: job.erpJobNumber,
       clientName: job.clientName,
-      type: cert.type,
+      type: cert.type as string,
       generatedDate: cert.generatedDate,
       downloadUrl: cert.downloadUrl,
+      isApiDocument: false, // Flag to identify job certificates
     }))
   );
+
+  // Transform API documents to match the interface
+  const apiDocs = apiDocuments.map((doc: DocumentType) => ({
+    id: doc.id,
+    jobId: doc.jobId || '',
+    jobNumber: doc.job?.erpJobNumber || doc.booking?.bookingNumber || 'N/A',
+    clientName: doc.job?.clientName || doc.booking?.client?.name || 'N/A',
+    type: doc.type,
+    generatedDate: doc.createdAt,
+    downloadUrl: documentsService.getDownloadUrl(doc.id),
+    isApiDocument: true, // Flag to identify API documents
+  }));
+
+  // Combine and deduplicate by ID
+  const allDocuments = [...apiDocs, ...jobCertificates];
+  const uniqueDocuments = Array.from(
+    new Map(allDocuments.map(doc => [doc.id, doc])).values()
+  );
+
+  const isLoading = isLoadingJobs || isLoadingDocuments;
 
   const filters = [
     { value: "all", label: "All Documents" },
@@ -79,7 +94,7 @@ const Documents = () => {
     { value: "recycling", label: "Recycling" },
   ];
 
-  const filteredDocs = allDocuments.filter((doc) => {
+  const filteredDocs = uniqueDocuments.filter((doc) => {
     const matchesSearch =
       doc.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.jobNumber.toLowerCase().includes(searchQuery.toLowerCase());
@@ -157,7 +172,7 @@ const Documents = () => {
           {/* Document Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(docTypeConfig).map(([type, config], index) => {
-              const count = allDocuments.filter((d) => d.type === type).length;
+              const count = uniqueDocuments.filter((d) => d.type === type).length;
               const Icon = config.icon;
               return (
                 <motion.div
@@ -216,11 +231,28 @@ const Documents = () => {
                         })}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={doc.downloadUrl} download>
+                    {doc.isApiDocument ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await documentsService.downloadDocument(doc.id, `${doc.type}-${doc.jobNumber}.pdf`);
+                          } catch (error) {
+                            console.error('Download failed:', error);
+                            // You could add a toast notification here
+                          }
+                        }}
+                      >
                         <Download className="h-4 w-4" />
-                      </a>
-                    </Button>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={doc.downloadUrl} download>
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

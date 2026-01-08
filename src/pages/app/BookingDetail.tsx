@@ -99,17 +99,7 @@ const BookingDetail = () => {
     }
   }, [booking, relatedJob]);
 
-  // Debug: Log cancellation notes to console (must be before early returns)
-  useEffect(() => {
-    if (booking && booking.status === 'cancelled') {
-      console.log('Booking cancellation details:', {
-        status: booking.status,
-        cancellationNotes: booking.cancellationNotes,
-        hasCancellationNotes: !!booking.cancellationNotes,
-        bookingKeys: Object.keys(booking)
-      });
-    }
-  }, [booking]);
+  // Note: Cancellation notes are displayed in the UI
 
   if (isLoading) {
     return (

@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { PhotoCapture } from "@/components/driver/PhotoCapture";
 import { SignatureCapture } from "@/components/driver/SignatureCapture";
 import { toast } from "sonner";
-import { useJob, useUpdateJobEvidence, useUpdateJobStatus } from "@/hooks/useJobs";
+import { useJob, useUpdateJobEvidence, useUpdateJobStatus, useUpdateJobJourneyFields } from "@/hooks/useJobs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { WorkflowStatus } from "@/types/jobs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,12 +40,46 @@ const DriverJobView = () => {
   const { data: job, isLoading, refetch: refetchJob } = useJob(id);
   const updateEvidence = useUpdateJobEvidence();
   const updateStatus = useUpdateJobStatus();
+  const updateJourneyFields = useUpdateJobJourneyFields();
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [signature, setSignature] = useState<string | null>(null);
   const [sealNumbers, setSealNumbers] = useState<string[]>([]);
   const [newSealNumber, setNewSealNumber] = useState("");
   const [notes, setNotes] = useState("");
+  
+  // Driver journey fields (for routed status) - all required
+  const [dial2Collection, setDial2Collection] = useState("");
+  const [securityRequirements, setSecurityRequirements] = useState("");
+  const [idRequired, setIdRequired] = useState("");
+  const [loadingBayLocation, setLoadingBayLocation] = useState("");
+  const [vehicleHeightRestrictions, setVehicleHeightRestrictions] = useState("");
+  const [doorLiftSize, setDoorLiftSize] = useState("");
+  const [roadWorksPublicEvents, setRoadWorksPublicEvents] = useState("");
+  const [manualHandlingRequirements, setManualHandlingRequirements] = useState("");
+
+  // Check if all journey fields are filled (all are required)
+  const areJourneyFieldsValid = useMemo(() => {
+    return (
+      dial2Collection.trim() !== "" &&
+      securityRequirements.trim() !== "" &&
+      idRequired.trim() !== "" &&
+      loadingBayLocation.trim() !== "" &&
+      vehicleHeightRestrictions.trim() !== "" &&
+      doorLiftSize.trim() !== "" &&
+      roadWorksPublicEvents.trim() !== "" &&
+      manualHandlingRequirements.trim() !== ""
+    );
+  }, [
+    dial2Collection,
+    securityRequirements,
+    idRequired,
+    loadingBayLocation,
+    vehicleHeightRestrictions,
+    doorLiftSize,
+    roadWorksPublicEvents,
+    manualHandlingRequirements,
+  ]);
 
   // Initialize state from job data - clear form when job changes or status changes
   useEffect(() => {
@@ -55,6 +89,18 @@ const DriverJobView = () => {
     setSealNumbers([]);
     setNotes("");
     setNewSealNumber("");
+    
+    // Initialize journey fields from job data if available
+    if (job) {
+      setDial2Collection(job.dial2Collection || "");
+      setSecurityRequirements(job.securityRequirements || "");
+      setIdRequired(job.idRequired || "");
+      setLoadingBayLocation(job.loadingBayLocation || "");
+      setVehicleHeightRestrictions(job.vehicleHeightRestrictions || "");
+      setDoorLiftSize(job.doorLiftSize || "");
+      setRoadWorksPublicEvents(job.roadWorksPublicEvents || "");
+      setManualHandlingRequirements(job.manualHandlingRequirements || "");
+    }
   }, [job?.id, job?.status]);
 
   // Get next valid status for driver workflow - recalculate when job changes
@@ -263,7 +309,7 @@ const DriverJobView = () => {
     }
 
     // Debug: Log evidence data before submission
-    console.log('[DriverJobView] Submitting evidence:', {
+    // Submitting evidence
       jobId: id,
       currentStatus: job?.status,
       nextStatus,
@@ -388,6 +434,178 @@ const DriverJobView = () => {
       </div>
 
       <div className="space-y-6 p-4 max-w-2xl mx-auto">
+        {/* Driver Journey Fields Form - Only show when status is routed */}
+        {job.status === 'routed' && (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-base">Journey Information</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Please enter the following information before starting your journey.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="dial2Collection">
+                  DIAL 2 Collection <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="dial2Collection"
+                  placeholder="e.g., 1 Person, 2 or more persons"
+                  value={dial2Collection}
+                  onChange={(e) => setDial2Collection(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="securityRequirements">
+                  Security Requirements <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="securityRequirements"
+                  placeholder="e.g., Security badge required at reception"
+                  value={securityRequirements}
+                  onChange={(e) => setSecurityRequirements(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="idRequired">
+                  ID Required <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="idRequired"
+                  placeholder="e.g., Yes - Photo ID required"
+                  value={idRequired}
+                  onChange={(e) => setIdRequired(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="loadingBayLocation">
+                  Loading Bay Location <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="loadingBayLocation"
+                  placeholder="e.g., Loading bay 3, rear entrance"
+                  value={loadingBayLocation}
+                  onChange={(e) => setLoadingBayLocation(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="vehicleHeightRestrictions">
+                  Vehicle Height Restrictions <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="vehicleHeightRestrictions"
+                  placeholder="e.g., Maximum height 3.5m"
+                  value={vehicleHeightRestrictions}
+                  onChange={(e) => setVehicleHeightRestrictions(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="doorLiftSize">
+                  Door & Lift Size <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="doorLiftSize"
+                  placeholder="e.g., Standard loading bay doors, lift available"
+                  value={doorLiftSize}
+                  onChange={(e) => setDoorLiftSize(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="roadWorksPublicEvents">
+                  Road Works / Public Events <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="roadWorksPublicEvents"
+                  placeholder="e.g., None reported"
+                  value={roadWorksPublicEvents}
+                  onChange={(e) => setRoadWorksPublicEvents(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="manualHandlingRequirements">
+                  Manual Handling Requirements <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="manualHandlingRequirements"
+                  placeholder="e.g., Heavy items require two-person lift"
+                  value={manualHandlingRequirements}
+                  onChange={(e) => setManualHandlingRequirements(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <Button
+                onClick={async () => {
+                  if (!id) return;
+                  
+                  // Validate all fields are filled
+                  if (!areJourneyFieldsValid) {
+                    toast.error("Please fill in all required fields", {
+                      description: "All journey information fields are required before saving.",
+                    });
+                    return;
+                  }
+                  
+                  try {
+                    await updateJourneyFields.mutateAsync({
+                      jobId: id,
+                      fields: {
+                        dial2Collection: dial2Collection.trim(),
+                        securityRequirements: securityRequirements.trim(),
+                        idRequired: idRequired.trim(),
+                        loadingBayLocation: loadingBayLocation.trim(),
+                        vehicleHeightRestrictions: vehicleHeightRestrictions.trim(),
+                        doorLiftSize: doorLiftSize.trim(),
+                        roadWorksPublicEvents: roadWorksPublicEvents.trim(),
+                        manualHandlingRequirements: manualHandlingRequirements.trim(),
+                      },
+                    });
+                    toast.success("Journey information saved successfully!");
+                    refetchJob();
+                  } catch (error) {
+                    toast.error("Failed to save journey information", {
+                      description: error instanceof Error ? error.message : "Please try again.",
+                    });
+                  }
+                }}
+                disabled={updateJourneyFields.isPending || !areJourneyFieldsValid}
+                className="w-full"
+              >
+                {updateJourneyFields.isPending ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2" />
+                    Save Journey Information
+                  </>
+                )}
+              </Button>
+              {!areJourneyFieldsValid && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Please fill in all required fields to save journey information
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Job Info Card */}
         <Card>
           <CardHeader>

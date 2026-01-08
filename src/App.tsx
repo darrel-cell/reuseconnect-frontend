@@ -20,8 +20,6 @@ import Settings from "./pages/app/Settings";
 import Users from "./pages/app/Users";
 import Clients from "./pages/app/Clients";
 import Drivers from "./pages/app/admin/Drivers";
-import Invoices from "./pages/app/Invoices";
-import Commission from "./pages/app/Commission";
 import BookingQueue from "./pages/app/admin/BookingQueue";
 import Assignment from "./pages/app/admin/Assignment";
 import Sanitisation from "./pages/app/admin/Sanitisation";
@@ -155,22 +153,6 @@ const App = () => (
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <Drivers />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/invoices"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin', 'client', 'reseller']}>
-                      <Invoices />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/commission"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin', 'reseller']}>
-                      <Commission />
                     </ProtectedRoute>
                   }
                 />

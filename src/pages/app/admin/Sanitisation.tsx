@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const sanitisationMethods = [
-  { value: 'blancco', label: 'Blancco Software Wipe' },
+  { value: 'blancco', label: 'NIST-800-88 Software Wipe' },
   { value: 'physical-destruction', label: 'Physical Destruction' },
   { value: 'degaussing', label: 'Degaussing' },
   { value: 'shredding', label: 'Shredding' },

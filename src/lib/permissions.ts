@@ -31,11 +31,6 @@ export type Permission =
   // Reseller permissions
   | 'resellers.view.all'
   | 'resellers.manage'
-  | 'commission.view'
-  
-  // Financial
-  | 'invoices.view'
-  | 'invoices.download'
   
   // Documents
   | 'documents.view.all'
@@ -99,10 +94,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'documents.view.own',
     'documents.download',
     
-    // Financial
-    'invoices.view',
-    'invoices.download',
-    
     // Settings
     'settings.organisation',
     'settings.integrations',
@@ -122,9 +113,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     // Client management
     'clients.view.own',
     'clients.manage',
-    
-    // Commission
-    'commission.view',
     
     // Documents
     'documents.view.own',

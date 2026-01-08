@@ -65,7 +65,7 @@ const AcceptInvite = () => {
       case 'client':
         return 'You will be able to create bookings, track collections, and view your environmental impact.';
       case 'reseller':
-        return 'You will be able to onboard clients, create bookings on their behalf, and track commission.';
+        return 'You will be able to onboard clients and create bookings on their behalf.';
       case 'driver':
         return 'You will be able to view assigned jobs, update statuses, and upload collection evidence.';
       case 'admin':

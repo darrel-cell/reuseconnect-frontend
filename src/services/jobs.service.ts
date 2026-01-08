@@ -152,17 +152,6 @@ class JobsService {
     try {
       const backendJob = await apiClient.get<any>(`/jobs/${id}`);
       
-      // Debug: Log raw backend response
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Jobs Service] Raw backend job response:', {
-          id: backendJob?.id,
-          hasEvidence: !!backendJob?.evidence,
-          evidenceType: typeof backendJob?.evidence,
-          evidenceIsArray: Array.isArray(backendJob?.evidence),
-          evidenceLength: Array.isArray(backendJob?.evidence) ? backendJob.evidence.length : 'N/A',
-          evidenceValue: backendJob?.evidence,
-        });
-      }
       
       return transformJob(backendJob);
     } catch (error) {
@@ -519,6 +508,83 @@ class JobsService {
       ...job.evidence,
       ...evidence,
     } as Job['evidence'];
+    
+    return job;
+  }
+
+  async updateJobJourneyFields(
+    jobId: string,
+    fields: {
+      dial2Collection?: string;
+      securityRequirements?: string;
+      idRequired?: string;
+      loadingBayLocation?: string;
+      vehicleHeightRestrictions?: string;
+      doorLiftSize?: string;
+      roadWorksPublicEvents?: string;
+      manualHandlingRequirements?: string;
+    }
+  ): Promise<Job> {
+    if (!USE_MOCK_API) {
+      return this.updateJobJourneyFieldsAPI(jobId, fields);
+    }
+    return this.updateJobJourneyFieldsMock(jobId, fields);
+  }
+
+  private async updateJobJourneyFieldsAPI(
+    jobId: string,
+    fields: {
+      dial2Collection?: string;
+      securityRequirements?: string;
+      idRequired?: string;
+      loadingBayLocation?: string;
+      vehicleHeightRestrictions?: string;
+      doorLiftSize?: string;
+      roadWorksPublicEvents?: string;
+      manualHandlingRequirements?: string;
+    }
+  ): Promise<Job> {
+    const backendJob = await apiClient.patch<any>(`/jobs/${jobId}/journey-fields`, fields);
+    return transformJob(backendJob);
+  }
+
+  private async updateJobJourneyFieldsMock(
+    jobId: string,
+    fields: {
+      dial2Collection?: string;
+      securityRequirements?: string;
+      idRequired?: string;
+      loadingBayLocation?: string;
+      vehicleHeightRestrictions?: string;
+      doorLiftSize?: string;
+      roadWorksPublicEvents?: string;
+      manualHandlingRequirements?: string;
+    }
+  ): Promise<Job> {
+    await delay(500);
+
+    const job = mockJobs.find(j => j.id === jobId);
+    if (!job) {
+      throw new ApiError(
+        ApiErrorType.NOT_FOUND,
+        `Job with ID "${jobId}" was not found.`,
+        404,
+        { jobId }
+      );
+    }
+
+    // Only allow updating journey fields when job is in 'routed' status
+    if (job.status !== 'routed') {
+      throw new ApiError(
+        ApiErrorType.VALIDATION_ERROR,
+        `Journey fields can only be updated when job is in 'routed' status. Current status: "${job.status}".`,
+        400,
+        { jobId, currentStatus: job.status }
+      );
+    }
+
+    // Update journey fields
+    Object.assign(job, fields);
     
     return job;
   }

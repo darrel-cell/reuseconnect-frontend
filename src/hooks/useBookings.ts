@@ -85,3 +85,10 @@ export function useUpdateBookingStatus() {
   });
 }
 
+export function useCheckJobIdUnique() {
+  return useMutation({
+    mutationFn: ({ bookingId, erpJobNumber }: { bookingId: string; erpJobNumber: string }) =>
+      bookingService.checkJobIdUnique(bookingId, erpJobNumber),
+  });
+}
+
