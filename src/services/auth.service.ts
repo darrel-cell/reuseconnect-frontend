@@ -758,44 +758,6 @@ class AuthService {
       isAuthenticated: true,
     };
   }
-
-  private async getCurrentAuthAPI(): Promise<AuthState | null> {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      return null;
-    }
-
-    try {
-      const response = await apiClient.get<{ user: User }>('/auth/me');
-      
-      // Get tenant from user data or fetch separately
-      const user = response.user;
-      const tenant = this.currentTenant || {
-        id: user.tenantId,
-        name: user.tenantName,
-        slug: user.tenantName.toLowerCase().replace(/\s+/g, '-'),
-        createdAt: user.createdAt,
-      } as Tenant;
-
-      this.currentUser = user;
-      this.currentTenant = tenant;
-      this.token = token;
-
-      return {
-        user,
-        tenant,
-        token,
-        isAuthenticated: true,
-      };
-    } catch (error) {
-      // If token is invalid, clear it
-      if (error instanceof ApiError && error.statusCode === 401) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_id');
-      }
-      return null;
-    }
-  }
 }
 
 export const authService = new AuthService();
