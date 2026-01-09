@@ -281,7 +281,7 @@ const BookingApproval = () => {
           "text-xs sm:text-sm px-2 sm:px-3 py-1 flex-shrink-0 whitespace-nowrap"
         )}>
           <span className="hidden sm:inline">
-            {isGraded ? 'Ready for Final Approval' : 'Pending Approval'}
+          {isGraded ? 'Ready for Final Approval' : 'Pending Approval'}
           </span>
           <span className="sm:hidden">
             {isGraded ? 'Ready' : 'Pending'}

@@ -180,76 +180,166 @@ const BookingDetail = () => {
         <Badge className={cn("text-sm", statusColor)}>{statusLabel}</Badge>
       </motion.div>
 
-      {/* Horizontal Timeline */}
+      {/* Booking Progress Timeline */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Booking Progress</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="py-4">
-            <div className="relative flex items-center justify-between">
-              {/* Progress line background */}
-              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-border -translate-y-1/2" />
-              
-              {/* Progress line fill - ends at center of current icon */}
-              {!isCancelled && (
-                <motion.div 
-                  className="absolute left-0 top-1/2 h-0.5 bg-primary -translate-y-1/2"
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                />
-              )}
+            {/* Mobile: Vertical Timeline */}
+            <div className="md:hidden">
+              <div className="relative flex flex-col">
+                {/* Full height background line */}
+                <div className="absolute left-5 top-5 bottom-5 w-0.5 bg-border" />
+                
+                {/* Progress line - ends at center of current icon */}
+                {!isCancelled && currentIndex >= 0 && (() => {
+                  const totalSteps = timelineSteps.length;
+                  return (
+                    <motion.div 
+                      className="absolute left-5 w-0.5 bg-primary"
+                      initial={{ height: "0%" }}
+                      animate={{ 
+                        height: currentIndex === 0 
+                          ? '0px'
+                          : currentIndex === totalSteps - 1
+                          ? 'calc(100% - 20px)' // Full height minus top offset
+                          : `calc(${((currentIndex + 0.5) / totalSteps) * 100}% - 20px)` // To center of current icon
+                      }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      style={{ top: '20px' }} // Start from center of first icon
+                    />
+                  );
+                })()}
 
-              {timelineSteps.map((step, index) => {
-                const isCompleted = !isCancelled && index < currentIndex;
-                const isCurrent = !isCancelled && index === currentIndex;
-                const Icon = step.icon;
+                {timelineSteps.map((step, index) => {
+                  const isCompleted = !isCancelled && index < currentIndex;
+                  const isCurrent = !isCancelled && index === currentIndex;
+                  const Icon = step.icon;
 
-                return (
-                  <motion.div
-                    key={step.status}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="flex flex-col items-center relative z-10"
-                  >
-                    {/* Icon */}
-                    <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all mb-2",
-                      isCompleted || isCurrent
-                        ? "border-primary bg-primary/10"
-                        : "border-muted bg-muted"
-                    )}>
-                      {isCompleted ? (
-                        <CheckCircle2 className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Icon className={cn("h-5 w-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                  return (
+                    <motion.div
+                      key={step.status}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="relative flex items-start gap-3 pb-6 last:pb-0"
+                    >
+                      {/* Icon with solid background to cover line */}
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all flex-shrink-0 relative z-10",
+                        isCompleted || isCurrent
+                          ? "border-primary bg-background"
+                          : "border-muted bg-background"
+                      )}>
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Icon className={cn("h-5 w-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 pt-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={cn(
+                            "text-sm font-medium",
+                            (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {step.label}
+                          </span>
+                          {isCurrent && (
+                            <Badge className="bg-warning/20 text-warning text-xs px-2 py-0">
+                              Current
+                            </Badge>
+                          )}
+                          {isCompleted && (
+                            <Badge variant="outline" className="bg-success/10 text-success text-xs px-2 py-0">
+                              Done
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop: Horizontal Timeline */}
+            <div className="hidden md:block">
+              <div className="relative flex items-center justify-between">
+                {timelineSteps.map((step, index) => {
+                  const isCompleted = !isCancelled && index < currentIndex;
+                  const isCurrent = !isCancelled && index === currentIndex;
+                  const Icon = step.icon;
+                  const isLast = index === timelineSteps.length - 1;
+
+                  return (
+                    <motion.div
+                      key={step.status}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="flex flex-col items-center relative z-10 flex-1"
+                    >
+                      {/* Horizontal line connector - connects through center of icons */}
+                      {!isLast && (
+                        <div 
+                          className={cn(
+                            "absolute top-1/2 h-0.5 -translate-y-1/2",
+                            isCompleted
+                              ? "bg-primary" 
+                              : isCurrent
+                              ? "bg-primary"
+                              : "bg-border"
+                          )}
+                          style={{
+                            left: '50%', // Start from center of current icon
+                            right: 'calc(-50%)', // End at center of next icon (extend into next flex item)
+                            zIndex: 0
+                          }}
+                        />
                       )}
-                    </div>
+                      
+                      {/* Icon with solid background to cover line */}
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all mb-2 relative z-10",
+                        isCompleted || isCurrent
+                          ? "border-primary bg-background"
+                          : "border-muted bg-background"
+                      )}>
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Icon className={cn("h-5 w-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                        )}
+                      </div>
 
-                    {/* Label */}
-                    <span className={cn(
-                      "text-xs font-medium text-center mb-1",
-                      (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {step.label}
-                    </span>
+                      {/* Label */}
+                      <span className={cn(
+                        "text-xs font-medium text-center mb-1",
+                        (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {step.label}
+                      </span>
 
-                    {/* Status Badge */}
-                    {isCurrent && (
-                      <Badge className="bg-warning/20 text-warning text-xs px-2 py-0">
-                        Current
-                      </Badge>
-                    )}
-                    {isCompleted && (
-                      <Badge variant="outline" className="bg-success/10 text-success text-xs px-2 py-0">
-                        Done
-                      </Badge>
-                    )}
-                  </motion.div>
-                );
-              })}
+                      {/* Status Badge */}
+                      {isCurrent && (
+                        <Badge className="bg-warning/20 text-warning text-xs px-2 py-0">
+                          Current
+                        </Badge>
+                      )}
+                      {isCompleted && (
+                        <Badge variant="outline" className="bg-success/10 text-success text-xs px-2 py-0">
+                          Done
+                        </Badge>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
             
             {isCancelled && (
