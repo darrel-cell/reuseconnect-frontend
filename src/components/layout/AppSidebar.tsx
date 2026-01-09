@@ -78,9 +78,12 @@ function LogoutButton({ isCollapsed }: { isCollapsed: boolean }) {
       <AlertDialogTrigger asChild>
         <SidebarMenuButton
           tooltip="Logout"
-          className="h-11 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent w-full"
+          className={cn(
+            "h-11 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent w-full",
+            isCollapsed && "justify-start"
+          )}
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className={cn("transition-all duration-200 flex-shrink-0", isCollapsed ? "h-8 w-8" : "h-5 w-5")} />
           {!isCollapsed && <span className="font-medium ml-3">Logout</span>}
         </SidebarMenuButton>
       </AlertDialogTrigger>
@@ -105,7 +108,7 @@ function LogoutButton({ isCollapsed }: { isCollapsed: boolean }) {
   );
 }
 
-export function AppSidebar() {
+function AppSidebar() {
   const location = useLocation();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -131,13 +134,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+        <div className={cn("flex items-center", isCollapsed ? "justify-start" : "gap-3")}>
           <img 
             src={logo || '/logo.avif'} 
             alt="Reuse Connect ITAD Platform"
             className={cn(
               "object-contain transition-all duration-200",
-              isCollapsed ? "h-8 w-8" : "h-10 w-auto max-w-[140px]"
+              isCollapsed ? "h-12 w-14" : "h-10 w-auto max-w-[140px]"
             )}
             onError={(e) => {
               // Fallback to placeholder if logo fails to load
@@ -174,14 +177,22 @@ export function AppSidebar() {
                     tooltip={item.title}
                     className={cn(
                       "h-11 rounded-lg transition-all duration-200",
+                      isCollapsed && "justify-start",
                       isActive(item.url) 
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md font-semibold" 
                         : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent hover:shadow-sm"
                     )}
                   >
-                    <NavLink to={item.url} className="flex items-center gap-3" onClick={handleNavClick}>
-                      <item.icon className="h-5 w-5" />
-                      <span className="font-medium">{item.title}</span>
+                    <NavLink 
+                      to={item.url} 
+                      className={cn(
+                        "flex items-center transition-all duration-200",
+                        isCollapsed ? "justify-start" : "gap-3"
+                      )} 
+                      onClick={handleNavClick}
+                    >
+                      <item.icon className={cn("transition-all duration-200 flex-shrink-0", isCollapsed ? "h-8 w-8" : "h-5 w-5")} />
+                      {!isCollapsed && <span className="font-medium">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -199,11 +210,21 @@ export function AppSidebar() {
                 asChild
                 isActive={isActive(item.url)}
                 tooltip={item.title}
-                className="h-11 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                className={cn(
+                  "h-11 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+                  isCollapsed && "justify-start"
+                )}
               >
-                <NavLink to={item.url} className="flex items-center gap-3" onClick={handleNavClick}>
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.title}</span>
+                <NavLink 
+                  to={item.url} 
+                  className={cn(
+                    "flex items-center transition-all duration-200",
+                    isCollapsed ? "justify-start" : "gap-3"
+                  )} 
+                  onClick={handleNavClick}
+                >
+                  <item.icon className={cn("transition-all duration-200 flex-shrink-0", isCollapsed ? "h-8 w-8" : "h-5 w-5")} />
+                  {!isCollapsed && <span className="font-medium">{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -215,10 +236,13 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <div className={cn(
                   "flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent/50",
-                  isCollapsed && "justify-center p-2"
+                  isCollapsed && "justify-start p-2"
                 )}>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20 text-sidebar-primary">
-                    <Building2 className="h-4 w-4" />
+                  <div className={cn(
+                    "flex items-center justify-center rounded-lg bg-sidebar-primary/20 text-sidebar-primary transition-all duration-200",
+                    isCollapsed ? "h-12 w-12" : "h-9 w-9"
+                  )}>
+                    <Building2 className={cn("transition-all duration-200", isCollapsed ? "h-8 w-8" : "h-4 w-4")} />
                   </div>
                   {!isCollapsed && (
                     <div className="flex-1 min-w-0">
@@ -246,3 +270,5 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+export { AppSidebar };
