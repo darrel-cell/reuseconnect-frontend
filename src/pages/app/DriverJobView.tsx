@@ -401,17 +401,18 @@ const DriverJobView = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Mobile-optimized header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="flex items-center gap-3 p-4">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
+        <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/driver/schedule')}
+            className="h-9 w-9 sm:h-10 sm:w-10"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{job.organisationName || job.clientName}</h1>
+            <h1 className="text-base sm:text-lg font-bold truncate">{job.organisationName || job.clientName}</h1>
             <p className="text-xs text-muted-foreground font-mono truncate">
               {job.erpJobNumber}
             </p>
@@ -419,19 +420,19 @@ const DriverJobView = () => {
         </div>
       </div>
 
-      <div className="space-y-6 p-4 max-w-2xl mx-auto">
+      <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 max-w-2xl mx-auto">
         {/* Driver Journey Fields Form - Only show when status is routed */}
         {job.status === 'routed' && (
           <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-base">Journey Information</CardTitle>
-              <p className="text-sm text-muted-foreground">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Journey Information</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Please enter the following information before starting your journey.
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dial2Collection">
+            <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="dial2Collection" className="text-sm sm:text-base">
                   DIAL 2 Collection <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -440,11 +441,12 @@ const DriverJobView = () => {
                   value={dial2Collection}
                   onChange={(e) => setDial2Collection(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="securityRequirements">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="securityRequirements" className="text-sm sm:text-base">
                   Security Requirements <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -453,11 +455,12 @@ const DriverJobView = () => {
                   value={securityRequirements}
                   onChange={(e) => setSecurityRequirements(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="idRequired">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="idRequired" className="text-sm sm:text-base">
                   ID Required <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -466,11 +469,12 @@ const DriverJobView = () => {
                   value={idRequired}
                   onChange={(e) => setIdRequired(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="loadingBayLocation">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="loadingBayLocation" className="text-sm sm:text-base">
                   Loading Bay Location <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -479,11 +483,12 @@ const DriverJobView = () => {
                   value={loadingBayLocation}
                   onChange={(e) => setLoadingBayLocation(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="vehicleHeightRestrictions">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="vehicleHeightRestrictions" className="text-sm sm:text-base">
                   Vehicle Height Restrictions <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -492,11 +497,12 @@ const DriverJobView = () => {
                   value={vehicleHeightRestrictions}
                   onChange={(e) => setVehicleHeightRestrictions(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="doorLiftSize">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="doorLiftSize" className="text-sm sm:text-base">
                   Door & Lift Size <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -505,11 +511,12 @@ const DriverJobView = () => {
                   value={doorLiftSize}
                   onChange={(e) => setDoorLiftSize(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="roadWorksPublicEvents">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="roadWorksPublicEvents" className="text-sm sm:text-base">
                   Road Works / Public Events <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -518,11 +525,12 @@ const DriverJobView = () => {
                   value={roadWorksPublicEvents}
                   onChange={(e) => setRoadWorksPublicEvents(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="manualHandlingRequirements">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="manualHandlingRequirements" className="text-sm sm:text-base">
                   Manual Handling Requirements <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -531,6 +539,7 @@ const DriverJobView = () => {
                   value={manualHandlingRequirements}
                   onChange={(e) => setManualHandlingRequirements(e.target.value)}
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
               
@@ -569,22 +578,24 @@ const DriverJobView = () => {
                   }
                 }}
                 disabled={updateJourneyFields.isPending || !areJourneyFieldsValid}
-                className="w-full"
+                className="w-full text-sm sm:text-base"
+                size="lg"
               >
                 {updateJourneyFields.isPending ? (
                   <>
-                    <Loader2 className="animate-spin mr-2" />
-                    Saving...
+                    <Loader2 className="animate-spin mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2" />
-                    Save Journey Information
+                    <Save className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">Save Journey Information</span>
+                    <span className="sm:hidden">Save Information</span>
                   </>
                 )}
               </Button>
               {!areJourneyFieldsValid && (
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-muted-foreground text-center px-2">
                   Please fill in all required fields to save journey information
                 </p>
               )}
@@ -594,20 +605,20 @@ const DriverJobView = () => {
 
         {/* Job Info Card */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Collection Details</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Collection Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+          <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{job.siteName}</p>
-                <p className="text-xs text-muted-foreground">{job.siteAddress}</p>
+                <p className="text-sm sm:text-base font-medium break-words">{job.siteName}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{job.siteAddress}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+              <p className="text-xs sm:text-sm break-words">
                 {new Date(job.scheduledDate).toLocaleDateString("en-GB", {
                   weekday: "long",
                   day: "numeric",
@@ -618,13 +629,13 @@ const DriverJobView = () => {
             </div>
             {job.driver && (
               <>
-                <div className="flex items-center gap-3">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-mono">{job.driver.vehicleReg}</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+                  <p className="text-xs sm:text-sm font-mono break-all">{job.driver.vehicleReg}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm">{job.driver.phone}</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+                  <p className="text-xs sm:text-sm break-all">{job.driver.phone}</p>
                 </div>
               </>
             )}
@@ -633,9 +644,9 @@ const DriverJobView = () => {
 
         {/* View-Only Mode Alert - Show only if evidence for NEXT status exists (read-only) or job is beyond editable range */}
         {hasExistingEvidence && evidenceTargetStatus && canEditBase && (
-          <Alert className="bg-success/10 border-success/20">
-            <AlertCircle className="h-4 w-4 text-success" />
-            <AlertDescription>
+          <Alert className="bg-success/10 border-success/20 p-3 sm:p-4">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm">
               Evidence has already been submitted for "{evidenceTargetStatus}" status. You can view it but cannot modify it. You can proceed to update the job status.
             </AlertDescription>
           </Alert>
@@ -644,9 +655,9 @@ const DriverJobView = () => {
 
         {/* Evidence Requirements Info */}
         {canEdit && currentStatusRequiresEvidence && !hasExistingEvidence && evidenceTargetStatus && (
-          <Alert className="bg-primary/10 border-primary/20">
-            <AlertCircle className="h-4 w-4 text-primary" />
-            <AlertDescription>
+          <Alert className="bg-primary/10 border-primary/20 p-3 sm:p-4">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm">
               <strong>Evidence Required:</strong> You must submit evidence (photos and signature) for "{evidenceTargetStatus}" status before proceeding. 
               {evidenceTargetStatus === 'en-route' && ' This confirms you have started the collection journey.'}
               {evidenceTargetStatus === 'arrived' && ' This confirms you have arrived at the collection site.'}
@@ -658,9 +669,9 @@ const DriverJobView = () => {
 
         {/* Evidence Submission Status */}
         {hasExistingEvidence && nextStatus && canEdit && evidenceTargetStatus && (
-          <Alert className="bg-success/10 border-success/20">
-            <AlertCircle className="h-4 w-4 text-success" />
-            <AlertDescription>
+          <Alert className="bg-success/10 border-success/20 p-3 sm:p-4">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm">
               Evidence has been submitted for "{evidenceTargetStatus}" status. You can now proceed to "{nextStatus}" status.
             </AlertDescription>
           </Alert>
@@ -668,13 +679,13 @@ const DriverJobView = () => {
 
         {/* Photo Capture */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Camera className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
               Evidence Photos
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {/* Show submitted evidence for NEXT status if it exists (read-only), otherwise show form */}
             {hasExistingEvidence ? (
               <div className="space-y-2">
@@ -710,13 +721,13 @@ const DriverJobView = () => {
 
         {/* Signature Capture */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <PenTool className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <PenTool className="h-4 w-4 sm:h-5 sm:w-5" />
               Customer Signature
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {/* Show submitted evidence for NEXT status if it exists (read-only), otherwise show form */}
             {hasExistingEvidence ? (
               <div className="space-y-2">
@@ -746,10 +757,10 @@ const DriverJobView = () => {
 
         {/* Seal Numbers */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Seal Numbers</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Seal Numbers</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
             {/* Show submitted evidence for NEXT status if it exists (read-only), otherwise show form */}
             {hasExistingEvidence ? (
               <div className="space-y-2">
@@ -827,10 +838,10 @@ const DriverJobView = () => {
 
         {/* Notes */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Additional Notes</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Additional Notes</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {/* Show submitted evidence for NEXT status if it exists (read-only), otherwise show form */}
             {hasExistingEvidence ? (
               <div className="space-y-2">
@@ -855,7 +866,7 @@ const DriverJobView = () => {
 
         {/* Save Evidence and Update Status Button - Fixed at bottom on mobile */}
         {!hasExistingEvidence && currentStatusRequiresEvidence && canEdit && nextStatus && (
-          <div className="sticky bottom-0 bg-background border-t pt-4 pb-4 -mx-4 px-4">
+          <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t pt-3 pb-3 sm:pt-4 sm:pb-4 -mx-3 sm:-mx-4 px-3 sm:px-4">
             <Button
               onClick={handleSaveAndUpdateStatus}
               disabled={
@@ -863,28 +874,38 @@ const DriverJobView = () => {
                 updateEvidence.isPending || 
                 updateStatus.isPending
               }
-              className="w-full"
+              className="w-full text-sm sm:text-base"
               size="lg"
             >
               {updateEvidence.isPending || updateStatus.isPending ? (
                 <>
-                  <Loader2 className="animate-spin mr-2" />
+                  <Loader2 className="animate-spin mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">
                   {updateEvidence.isPending ? "Saving Evidence..." : "Updating Status..."}
+                  </span>
+                  <span className="sm:hidden">
+                    {updateEvidence.isPending ? "Saving..." : "Updating..."}
+                  </span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="mr-2" />
+                  <CheckCircle2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">
                   Submit Evidence for {evidenceTargetStatus?.charAt(0).toUpperCase() + evidenceTargetStatus?.slice(1)} & Move to {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                  </span>
+                  <span className="sm:hidden">
+                    Submit & Move to {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                  </span>
                 </>
               )}
             </Button>
             {!canSave && evidenceTargetStatus && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
+              <p className="text-xs text-muted-foreground text-center mt-2 px-2">
                 Please add at least one photo and a customer signature to submit evidence for {evidenceTargetStatus} status
               </p>
             )}
             {canSave && evidenceTargetStatus && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
+              <p className="text-xs text-muted-foreground text-center mt-2 px-2">
                 This will save your evidence for "{evidenceTargetStatus}" status and update the job status to "{nextStatus}". 
                 {nextStatus === 'warehouse' && ' Your role in this job will be completed.'}
               </p>
@@ -895,11 +916,11 @@ const DriverJobView = () => {
         {/* Status Update Only (if evidence already exists for next status) */}
         {hasExistingEvidence && nextStatus && canEditBase && (
           <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground mb-1">Update Job Status</p>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground mb-1 text-sm sm:text-base">Update Job Status</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Evidence has been submitted for "{evidenceTargetStatus}" status. Update job status to "{nextStatus}" to progress the workflow.
                   </p>
                 </div>
@@ -907,16 +928,18 @@ const DriverJobView = () => {
                   onClick={() => handleStatusUpdate(nextStatus)}
                   disabled={updateStatus.isPending}
                   size="lg"
+                  className="w-full sm:w-auto text-sm sm:text-base"
                 >
                   {updateStatus.isPending ? (
                     <>
-                      <Loader2 className="animate-spin" />
-                      Updating...
+                      <Loader2 className="animate-spin h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="ml-2">Updating...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 />
-                      Mark as {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="ml-2 hidden sm:inline">Mark as {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</span>
+                      <span className="ml-2 sm:hidden">Mark as {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}</span>
                     </>
                   )}
                 </Button>

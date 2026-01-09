@@ -14,7 +14,43 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
   const isDrawingRef = useRef(false);
   const dprRef = useRef(1);
   const onSignatureChangeRef = useRef(onSignatureChange);
-  const [hasSignature, setHasSignature] = useState(!!signature);
+  
+  // Helper to check if signature is valid (not null, not empty, and is a valid data URL)
+  const isValidSignature = (sig: string | null): boolean => {
+    return !!sig && typeof sig === 'string' && sig.trim() !== '' && sig.startsWith('data:image/');
+  };
+  
+  // Helper to check if canvas has actual content (not just white/transparent)
+  const checkCanvasContent = useCallback((): boolean => {
+    const canvas = canvasRef.current;
+    if (!canvas || !ctxRef.current || canvas.width === 0 || canvas.height === 0) {
+      return false;
+    }
+    
+    try {
+      const imageData = ctxRef.current.getImageData(0, 0, canvas.width, canvas.height);
+      // Check if there's any non-white, non-transparent pixel
+      // A signature should have dark pixels (RGB values < 250) with alpha > 0
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i];
+        const g = imageData.data[i + 1];
+        const b = imageData.data[i + 2];
+        const a = imageData.data[i + 3];
+        
+        // Check for dark pixels (signature ink) - not just any alpha
+        // White background has high RGB values, signature has low RGB values
+        if (a > 0 && (r < 250 || g < 250 || b < 250)) {
+          return true;
+        }
+      }
+    } catch (e) {
+      // Canvas might not be initialized yet
+      return false;
+    }
+    return false;
+  }, []);
+  
+  const [hasSignature, setHasSignature] = useState(false);
 
   // Keep the callback ref up to date
   useEffect(() => {
@@ -31,21 +67,108 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
 
     ctxRef.current = ctx;
 
-    // Set canvas size (only once)
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    dprRef.current = dpr;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+    // Store current signature data for smooth resizing
+    let currentSignatureData: string | null = null;
 
-    // Set drawing styles
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+    // Function to update canvas size smoothly
+    const updateCanvasSize = () => {
+      if (!canvas || !ctx) return;
+
+      // Get the container (parent) dimensions instead of canvas itself
+      const container = canvas.parentElement;
+      if (!container) return;
+      
+      // Force a reflow to ensure container has correct dimensions
+      void container.offsetWidth;
+      
+      const containerRect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      dprRef.current = dpr;
+      
+      // Use container dimensions to ensure perfect match
+      // Ensure we have valid dimensions (minimum values to prevent errors)
+      let newWidth = containerRect.width;
+      let newHeight = containerRect.height;
+      
+      // If dimensions are invalid, try to get from computed style
+      if (newWidth <= 0 || newHeight <= 0) {
+        const computedStyle = window.getComputedStyle(container);
+        newWidth = parseFloat(computedStyle.width) || container.clientWidth || 300;
+        newHeight = parseFloat(computedStyle.height) || container.clientHeight || 75;
+      }
+      
+      // Ensure minimum dimensions
+      newWidth = Math.max(newWidth, 100);
+      newHeight = Math.max(newHeight, 25);
+      
+      // Store current signature before resizing
+      if (canvas.width > 0 && canvas.height > 0) {
+        try {
+          currentSignatureData = canvas.toDataURL("image/png");
+        } catch (e) {
+          // Canvas might be empty, ignore
+        }
+      }
+      
+      canvas.width = newWidth * dpr;
+      canvas.height = newHeight * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = `${newWidth}px`;
+      canvas.style.height = `${newHeight}px`;
+      
+      // Restore drawing styles
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      // Restore signature if it exists (prioritize prop signature, then current data)
+      const signatureToRestore = signature || currentSignatureData;
+      if (signatureToRestore && isValidSignature(signatureToRestore)) {
+        const img = new Image();
+        img.onload = () => {
+          if (ctx && canvas) {
+            ctx.clearRect(0, 0, newWidth, newHeight);
+            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+            // Verify canvas has content after drawing
+            setTimeout(() => {
+              const hasContent = checkCanvasContent();
+              setHasSignature(hasContent);
+            }, 50);
+            // Update parent if we restored from current data
+            if (!signature && currentSignatureData) {
+              onSignatureChangeRef.current(canvas.toDataURL("image/png"));
+            }
+          }
+        };
+        img.onerror = () => {
+          // If image fails to load, clear the canvas
+          if (ctx && canvas) {
+            ctx.clearRect(0, 0, newWidth, newHeight);
+            setHasSignature(false);
+          }
+        };
+        img.src = signatureToRestore;
+      } else {
+        // Clear canvas if no signature
+        ctx.clearRect(0, 0, newWidth, newHeight);
+        setHasSignature(false);
+      }
+    };
+
+    // Set canvas size initially with a small delay to ensure container is rendered
+    const initTimeout = setTimeout(() => {
+      updateCanvasSize();
+      // After canvas is initialized, verify if it actually has content
+      setTimeout(() => {
+        if (canvas && ctx) {
+          const hasContent = checkCanvasContent();
+          setHasSignature(hasContent);
+        } else {
+          setHasSignature(false);
+        }
+      }, 200);
+    }, 0);
 
     const getCoordinates = (e: MouseEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -64,19 +187,6 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
       }
       return { x: 0, y: 0 };
     };
-
-    // Load existing signature if provided
-    if (signature) {
-      const img = new Image();
-      img.onload = () => {
-        if (ctxRef.current && canvasRef.current) {
-          ctxRef.current.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-          ctxRef.current.drawImage(img, 0, 0, canvas.width / dpr, canvas.height / dpr);
-          setHasSignature(true);
-        }
-      };
-      img.src = signature;
-    }
 
     const startDrawing = (e: MouseEvent | TouchEvent) => {
       e.preventDefault();
@@ -144,7 +254,49 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
     canvas.addEventListener("touchend", stopDrawing);
     canvas.addEventListener("touchcancel", stopDrawing);
 
+    // Throttle resize updates for smooth performance
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    const throttledUpdateCanvasSize = () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(() => {
+        updateCanvasSize();
+        resizeTimeout = null;
+      }, 16); // ~60fps
+    };
+
+    // Add resize observer to handle container size changes smoothly
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Immediately update on resize (throttled)
+      throttledUpdateCanvasSize();
+    });
+    
+    // Observe the container element (parent of canvas)
+    const container = canvas.parentElement;
+    if (container) {
+      resizeObserver.observe(container);
+      // Also observe the canvas itself as a fallback
+      resizeObserver.observe(canvas);
+    }
+
+    // Also listen to window resize as fallback (throttled)
+    const handleResize = () => {
+      throttledUpdateCanvasSize();
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
+    
+    // Also update on orientation change for mobile devices
+    const handleOrientationChange = () => {
+      setTimeout(() => updateCanvasSize(), 100);
+    };
+    window.addEventListener("orientationchange", handleOrientationChange, { passive: true });
+
     return () => {
+      clearTimeout(initTimeout);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
       canvas.removeEventListener("mousedown", startDrawing);
       canvas.removeEventListener("mousemove", draw);
       canvas.removeEventListener("mouseup", stopDrawing);
@@ -153,23 +305,51 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
       canvas.removeEventListener("touchmove", draw);
       canvas.removeEventListener("touchend", stopDrawing);
       canvas.removeEventListener("touchcancel", stopDrawing);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleOrientationChange);
     };
-  }, []); // Only run once on mount to set up canvas and event listeners
+  }, [signature]); // Re-run if signature changes
 
-  // Load signature from prop when it changes externally
+  // Sync hasSignature with signature prop changes and check canvas content
   useEffect(() => {
-    if (signature && canvasRef.current && ctxRef.current) {
+    // Always start by setting to false, then verify
+    if (!canvasRef.current || !ctxRef.current) {
+      setHasSignature(false);
+      return;
+    }
+    
+    const isValid = isValidSignature(signature);
+    
+    // If signature is valid, load it onto canvas
+    if (isValid && signature) {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       const img = new Image();
       img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width / dprRef.current, canvas.height / dprRef.current);
-        ctx.drawImage(img, 0, 0, canvas.width / dprRef.current, canvas.height / dprRef.current);
-        setHasSignature(true);
+        if (ctx && canvas) {
+          ctx.clearRect(0, 0, canvas.width / dprRef.current, canvas.height / dprRef.current);
+          ctx.drawImage(img, 0, 0, canvas.width / dprRef.current, canvas.height / dprRef.current);
+          // Check canvas content after loading - verify it actually has dark pixels
+          setTimeout(() => {
+            const hasContent = checkCanvasContent();
+            setHasSignature(hasContent);
+          }, 100);
+        }
+      };
+      img.onerror = () => {
+        // If image fails to load, treat as invalid
+        setHasSignature(false);
       };
       img.src = signature;
+    } else {
+      // No valid signature prop - check canvas content directly
+      setTimeout(() => {
+        const hasContent = checkCanvasContent();
+        setHasSignature(hasContent);
+      }, 50);
     }
-  }, [signature]);
+  }, [signature, checkCanvasContent]);
 
   const saveSignature = useCallback(() => {
     const canvas = canvasRef.current;
@@ -202,6 +382,7 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
     const ctx = ctxRef.current;
     // Clear the canvas visually
     ctx.clearRect(0, 0, canvas.width / dprRef.current, canvas.height / dprRef.current);
+    // Update state immediately
     setHasSignature(false);
     // Notify parent that signature is cleared
     onSignatureChangeRef.current(null);
@@ -209,14 +390,16 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
 
 
   return (
-    <div className="space-y-4">
-      <Card className="border-2">
-        <CardContent className="p-0">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-64 touch-none cursor-crosshair bg-white rounded-lg"
-            style={{ minHeight: "256px" }}
-          />
+    <div className="space-y-4 w-full min-w-0">
+      <Card className="border-2 w-full min-w-0">
+        <CardContent className="p-0 w-full min-w-0">
+          <div className="relative w-full min-w-0 overflow-hidden" style={{ aspectRatio: "4/1", width: "100%" }}>
+            <canvas
+              ref={canvasRef}
+              className="block w-full h-full touch-none cursor-crosshair bg-white"
+              style={{ width: "100%", height: "100%" }}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -227,7 +410,7 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
           variant="outline"
           className="w-full"
           size="lg"
-          disabled={!hasSignature && !signature}
+          disabled={!hasSignature}
           title="Clear the canvas to start over"
         >
           <RotateCcw className="h-5 w-5 mr-2" />
@@ -235,19 +418,20 @@ export function SignatureCapture({ signature, onSignatureChange }: SignatureCapt
         </Button>
       </div>
 
-      {!hasSignature && !signature && (
+      {!hasSignature ? (
         <div className="text-center">
-          <Pen className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <Pen className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             Sign above using your finger or mouse
           </p>
         </div>
-      )}
-
-      {signature && (
+      ) : (
         <div className="text-center">
           <p className="text-sm text-success font-medium">
             ✓ Signature captured
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your signature has been saved. You can clear it to start over.
           </p>
         </div>
       )}
