@@ -274,7 +274,13 @@ const BookingApproval = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-foreground">
             {isGraded ? 'Final Approval' : 'Booking Approval'}
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground truncate">{booking.bookingNumber} - {booking.organisationName || booking.clientName}</p>
+          <div className="text-sm sm:text-base text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-1">
+              <span>{booking.bookingNumber}</span>
+              <span className="hidden sm:inline">-</span>
+              <span>{booking.organisationName || booking.clientName}</span>
+            </div>
+          </div>
         </div>
         <Badge className={cn(
           isGraded ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
