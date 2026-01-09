@@ -371,12 +371,6 @@ const Sanitisation = () => {
                               Verify
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={record.certificateUrl} download>
-                              <Download className="h-4 w-4 mr-2" />
-                              Certificate
-                            </a>
-                          </Button>
                         </div>
                       </div>
                     ))}

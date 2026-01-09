@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Award, Download, PoundSterling, Loader2, FileText, Truck, User, Phone, Smartphone } from "lucide-react";
+import { ArrowLeft, Award, PoundSterling, Loader2, FileText, Truck, User, Phone, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -158,12 +158,6 @@ const BookingGradingReport = () => {
             <p className="text-muted-foreground">{booking.bookingNumber} - {booking.organisationName || booking.clientName}</p>
           </div>
         </div>
-        <Button variant="outline" asChild>
-          <a href="#" download>
-            <Download className="h-4 w-4 mr-2" />
-            Download Report
-          </a>
-        </Button>
       </motion.div>
 
       {/* Summary Cards */}

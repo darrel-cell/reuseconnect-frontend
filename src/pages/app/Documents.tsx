@@ -126,10 +126,6 @@ const Documents = () => {
           <h2 className="text-2xl font-bold text-foreground">Compliance Documents</h2>
           <p className="text-muted-foreground">Download certificates and compliance records</p>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Download All
-        </Button>
       </motion.div>
 
       {/* Search and Filters */}

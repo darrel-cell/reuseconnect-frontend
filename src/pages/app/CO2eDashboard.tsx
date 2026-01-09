@@ -84,18 +84,63 @@ const CO2eDashboard = () => {
     };
   }, [filteredJobs]);
 
-  // Generate monthly data for charts (will be updated based on filtered jobs)
+  // Generate monthly data for charts - show last 6 months with zeros for months without data
   const monthlyData = useMemo(() => {
-    const currentTotal = clientStats.totalSaved;
-    return [
-      { month: "Jul", saved: currentTotal * 0.7, travel: 320 },
-      { month: "Aug", saved: currentTotal * 0.8, travel: 380 },
-      { month: "Sep", saved: currentTotal * 0.75, travel: 290 },
-      { month: "Oct", saved: currentTotal * 0.95, travel: 420 },
-      { month: "Nov", saved: currentTotal * 0.9, travel: 350 },
-      { month: "Dec", saved: currentTotal, travel: 410 },
-    ];
-  }, [clientStats.totalSaved]);
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    // Initialize last 6 months with zeros
+    const monthlyTotals: Record<string, { saved: number; travel: number }> = {};
+    const monthsToShow: Array<{ month: string; year: number; saved: number; travel: number }> = [];
+    
+    // Create array of last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const year = currentMonth - i < 0 ? currentYear - 1 : currentYear;
+      const monthKey = `${monthNames[monthIndex]}-${year}`;
+      
+      // Initialize with zeros
+      monthlyTotals[monthKey] = { saved: 0, travel: 0 };
+      
+      // Add to monthsToShow array in order
+      monthsToShow.push({
+        month: monthNames[monthIndex],
+        year: year,
+        saved: 0,
+        travel: 0,
+      });
+    }
+    
+    // Fill in actual data from jobs
+    filteredJobs.forEach(job => {
+      const date = new Date(job.scheduledDate);
+      const jobYear = date.getFullYear();
+      const jobMonth = date.getMonth();
+      const monthKey = `${monthNames[jobMonth]}-${jobYear}`;
+      
+      // Only include if it's in our last 6 months range
+      if (monthlyTotals[monthKey] !== undefined) {
+        monthlyTotals[monthKey].saved += job.co2eSaved;
+        monthlyTotals[monthKey].travel += job.travelEmissions;
+      }
+    });
+    
+    // Update monthsToShow with actual totals
+    let monthIndex = 0;
+    for (let i = 5; i >= 0; i--) {
+      const monthIdx = (currentMonth - i + 12) % 12;
+      const year = currentMonth - i < 0 ? currentYear - 1 : currentYear;
+      const monthKey = `${monthNames[monthIdx]}-${year}`;
+      
+      monthsToShow[monthIndex].saved = monthlyTotals[monthKey].saved;
+      monthsToShow[monthIndex].travel = monthlyTotals[monthKey].travel;
+      monthIndex++;
+    }
+    
+    return monthsToShow;
+  }, [filteredJobs]);
 
   // Calculate CO2 stats per client for reseller
   const clientCO2Stats = useMemo(() => {
@@ -130,12 +175,63 @@ const CO2eDashboard = () => {
     );
   }, [clientCO2Stats, clientSearchQuery]);
 
-  // Asset category breakdown
-  const categoryData = assetCategories.slice(0, 5).map((cat, i) => ({
+  // Asset category breakdown - calculate from actual jobs, show all categories
+  const categoryData = useMemo(() => {
+    // Calculate CO2e saved per category from jobs
+    const categoryTotals: Record<string, number> = {};
+    
+    // Initialize all categories with zero
+    assetCategories.forEach(category => {
+      categoryTotals[category.id] = 0;
+    });
+    
+    // Fill in actual data from jobs
+    filteredJobs.forEach(job => {
+      job.assets.forEach(asset => {
+        // Try to find category by ID or name
+        const categoryId = asset.categoryId || asset.category;
+        const category = assetCategories.find(c => 
+          c.id === categoryId || c.name === (asset.categoryName || asset.category)
+        );
+        
+        if (category) {
+          const categoryKey = category.id;
+          const co2eForAsset = category.co2ePerUnit * asset.quantity;
+          categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + co2eForAsset;
+        }
+      });
+    });
+    
+    // Convert to array with all categories, sorted by value descending
+    const categoryArray = assetCategories
+      .map(category => ({
+        id: category.id,
+        name: category.name,
+        value: categoryTotals[category.id] || 0,
+      }))
+      .sort((a, b) => b.value - a.value); // Sort by value descending
+    
+    // Calculate total for percentage calculation
+    const totalCO2e = categoryArray.reduce((sum, cat) => sum + cat.value, 0);
+    
+    // Map to chart data with percentages - colors for all 7 categories
+    const colors = [
+      "hsl(168, 70%, 35%)",  // Teal
+      "hsl(168, 60%, 45%)",  // Teal lighter
+      "hsl(180, 50%, 40%)",  // Cyan
+      "hsl(205, 60%, 45%)",  // Blue
+      "hsl(38, 95%, 55%)",   // Orange
+      "hsl(280, 60%, 50%)",  // Purple
+      "hsl(340, 70%, 50%)",  // Pink
+    ];
+    
+    return categoryArray.map((cat, i) => ({
     name: cat.name,
-    value: [45, 25, 15, 10, 5][i],
-    color: ["hsl(168, 70%, 35%)", "hsl(168, 60%, 45%)", "hsl(180, 50%, 40%)", "hsl(205, 60%, 45%)", "hsl(38, 95%, 55%)"][i],
+      value: totalCO2e > 0 ? Math.round((cat.value / totalCO2e) * 100) : 0,
+      color: colors[i] || colors[colors.length - 1],
+      actualValue: cat.value, // Store actual CO2e value for tooltip if needed
   }));
+  }, [filteredJobs, assetCategories]);
   
   const totalSaved = clientStats.totalSaved;
   const totalTravel = clientStats.totalTravel;
@@ -338,10 +434,6 @@ const CO2eDashboard = () => {
                     : "Your clients' CO₂e savings and ESG metrics"}
                 </p>
               </div>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export Report
-              </Button>
             </motion.div>
 
             {/* Main Stats - Reduced Size */}
@@ -462,7 +554,10 @@ const CO2eDashboard = () => {
                             dataKey="month" 
                             stroke="hsl(var(--muted-foreground))"
                             fontSize={11}
-                            tickFormatter={(value) => `${value} 2024`}
+                            tickFormatter={(value, index) => {
+                              const dataPoint = monthlyData[index];
+                              return dataPoint ? `${value} ${dataPoint.year}` : value;
+                            }}
                           />
                           <YAxis 
                             stroke="hsl(var(--muted-foreground))"
@@ -527,7 +622,13 @@ const CO2eDashboard = () => {
                               borderRadius: "8px",
                               fontSize: "12px"
                             }}
-                            formatter={(value: number) => [`${value}%`, "Contribution"]}
+                            formatter={(value: number, name: string, props: any) => {
+                              const actualValue = props.payload?.actualValue || 0;
+                              return [
+                                `${value}% (${(actualValue / 1000).toFixed(2)}t CO₂e)`,
+                                "Contribution"
+                              ];
+                            }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -611,21 +712,21 @@ const CO2eDashboard = () => {
                                 const maxChars = Math.floor((estimatedBarWidth * 0.9) / charWidth);
                                 
                                 // Show full text, but italicize if it would overflow
-                                const clientName = data.organisationName || data.clientName || '';
+                                const organisationName = data.organisationName || '';
                                 const siteName = data.siteName || '';
                                 const date = data.date || '';
                                 
                                 // Check if text would overflow
-                                const clientNameOverflow = clientName.length > maxChars;
+                                const organisationOverflow = organisationName.length > maxChars;
                                 const siteNameOverflow = siteName.length > maxChars;
                                 const dateOverflow = date.length > maxChars;
                                 
-                                // Show client name when in "View All" state (no client selected)
-                                const showClientName = !selectedClientId;
+                                // Show organisation name when in "View All" state (no client selected)
+                                const showOrganisationName = !selectedClientId;
                                 
                                 return (
                                   <g transform={`translate(${x},${y})`}>
-                                    {showClientName && (
+                                    {showOrganisationName && (
                                       <text
                                         x={0}
                                         y={0}
@@ -633,15 +734,15 @@ const CO2eDashboard = () => {
                                         textAnchor="middle"
                                         fill="hsl(var(--muted-foreground))"
                                         fontSize={10}
-                                        fontStyle={clientNameOverflow ? 'italic' : 'normal'}
+                                        fontStyle={organisationOverflow ? 'italic' : 'normal'}
                                       >
-                                        {clientName}
+                                        {organisationName}
                                       </text>
                                     )}
                                     <text
                                       x={0}
                                       y={0}
-                                      dy={showClientName ? 28 : 16}
+                                      dy={showOrganisationName ? 28 : 16}
                                       textAnchor="middle"
                                       fill="hsl(var(--muted-foreground))"
                                       fontSize={10}
@@ -712,10 +813,6 @@ const CO2eDashboard = () => {
           <h2 className="text-2xl font-bold text-foreground">Environmental Impact</h2>
           <p className="text-muted-foreground">Your CO₂e savings and ESG metrics</p>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export ESG Report
-        </Button>
       </motion.div>
 
       {/* Main Stats */}
@@ -836,7 +933,10 @@ const CO2eDashboard = () => {
                       dataKey="month" 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
-                      tickFormatter={(value) => `${value} 2024`}
+                      tickFormatter={(value, index) => {
+                        const dataPoint = monthlyData[index];
+                        return dataPoint ? `${value} ${dataPoint.year}` : value;
+                      }}
                     />
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))"
@@ -899,7 +999,13 @@ const CO2eDashboard = () => {
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "8px"
                       }}
-                      formatter={(value: number) => [`${value}%`, "Contribution"]}
+                      formatter={(value: number, name: string, props: any) => {
+                        const actualValue = props.payload?.actualValue || 0;
+                        return [
+                          `${value}% (${(actualValue / 1000).toFixed(2)}t CO₂e)`,
+                          "Contribution"
+                        ];
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -944,6 +1050,7 @@ const CO2eDashboard = () => {
                       name: j.erpJobNumber, // Use full job number as key
                       jobNumber: j.erpJobNumber,
                       clientName: j.clientName,
+                      organisationName: j.organisationName,
                       siteName: j.siteName,
                       date: `${month} ${year}`,
                       fullName: `${j.erpJobNumber} - ${j.siteName} (${month} ${year})`,
@@ -982,21 +1089,21 @@ const CO2eDashboard = () => {
                            const maxChars = Math.floor((estimatedBarWidth * 0.9) / charWidth);
                            
                            // Show full text, but italicize if it would overflow
-                           const clientName = data.clientName || '';
+                           const organisationName = data.organisationName || '';
                            const siteName = data.siteName || '';
                            const date = data.date || '';
                            
                            // Check if text would overflow
-                           const clientNameOverflow = clientName.length > maxChars;
+                           const organisationOverflow = organisationName.length > maxChars;
                            const siteNameOverflow = siteName.length > maxChars;
                            const dateOverflow = date.length > maxChars;
                            
-                           // Show client name when in "View All" state (no client selected)
-                           const showClientName = !selectedClientId;
+                           // Always show organisation name in the top line
+                           const showOrganisationName = true;
                            
                            return (
                              <g transform={`translate(${x},${y})`}>
-                               {showClientName && (
+                               {showOrganisationName && (
                                  <text
                                    x={0}
                                    y={0}
@@ -1004,15 +1111,15 @@ const CO2eDashboard = () => {
                                    textAnchor="middle"
                                    fill="hsl(var(--muted-foreground))"
                                    fontSize={11}
-                                   fontStyle={clientNameOverflow ? 'italic' : 'normal'}
+                                   fontStyle={organisationOverflow ? 'italic' : 'normal'}
                                  >
-                                   {clientName}
+                                   {organisationName}
                                  </text>
                                )}
                                <text
                                  x={0}
                                  y={0}
-                                 dy={showClientName ? 28 : 16}
+                                 dy={showOrganisationName ? 28 : 16}
                                  textAnchor="middle"
                                  fill="hsl(var(--muted-foreground))"
                                  fontSize={11}
@@ -1023,7 +1130,7 @@ const CO2eDashboard = () => {
                                <text
                                  x={0}
                                  y={0}
-                                 dy={showClientName ? 40 : 28}
+                                 dy={showOrganisationName ? 40 : 28}
                                  textAnchor="middle"
                                  fill="hsl(var(--muted-foreground))"
                                  fontSize={11}

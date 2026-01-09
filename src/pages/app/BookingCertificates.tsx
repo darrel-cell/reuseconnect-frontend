@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Download, CheckCircle2, Clock, Loader2, FileText, Truck, User, Phone, Smartphone } from "lucide-react";
+import { ArrowLeft, Shield, CheckCircle2, Clock, Loader2, FileText, Truck, User, Phone, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -206,12 +206,6 @@ const BookingCertificates = () => {
                             )}
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={record.certificateUrl} download>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </a>
-                        </Button>
                       </div>
                     ))}
                   </div>

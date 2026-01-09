@@ -2,7 +2,6 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, 
-  Download, 
   Loader2, 
   Package,
   PoundSterling,
@@ -119,16 +118,6 @@ const BookingSummary = () => {
             <p className="text-muted-foreground">{booking.bookingNumber} - {booking.organisationName || booking.clientName}</p>
           </div>
         </div>
-        <Button variant="outline" asChild>
-          <a href="#" download onClick={(e) => {
-            e.preventDefault();
-            // TODO: Implement PDF download
-            alert("PDF download functionality will be implemented");
-          }}>
-            <Download className="h-4 w-4 mr-2" />
-            Download Report
-          </a>
-        </Button>
       </motion.div>
 
       {/* Summary Cards */}
@@ -252,12 +241,6 @@ const BookingSummary = () => {
                       </p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={cert.url} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </a>
-                  </Button>
                 </div>
               ))}
             </div>
@@ -299,7 +282,7 @@ const BookingSummary = () => {
       {/* Quick Links */}
       <Card>
         <CardHeader>
-          <CardTitle>Related Documents</CardTitle>
+          <CardTitle>Related Links</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -313,10 +296,16 @@ const BookingSummary = () => {
               <Button variant="outline" asChild>
                 <Link to={`/bookings/${id}/certificates`} className="text-inherit no-underline">
                   <Shield className="h-4 w-4 mr-2" />
-                  View All Certificates
+                  View Certificates
                 </Link>
               </Button>
             )}
+            <Button variant="outline" asChild>
+              <Link to={`/documents`} className="text-inherit no-underline">
+                <FileText className="h-4 w-4 mr-2" />
+                View Chain of Custody
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

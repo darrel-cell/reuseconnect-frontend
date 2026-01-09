@@ -90,9 +90,8 @@ const Index = () => {
               <StatCard
                 title="Total Assets"
                 value={stats.totalAssets.toLocaleString()}
-                subtitle="Processed this month"
+                subtitle="Processed"
                 icon={Package}
-                trend={{ value: 12, isPositive: true }}
                 delay={0.1}
               />
               <StatCard
@@ -109,7 +108,6 @@ const Index = () => {
                 subtitle="Environmental impact"
                 icon={Leaf}
                 variant="success"
-                trend={{ value: 8, isPositive: true }}
                 delay={0.3}
               />
             </>
