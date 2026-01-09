@@ -28,6 +28,7 @@ import { useSanitisationRecords } from "@/hooks/useSanitisation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 const BookingApproval = () => {
   const { id } = useParams();
@@ -269,14 +270,22 @@ const BookingApproval = () => {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-foreground">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
             {isGraded ? 'Final Approval' : 'Booking Approval'}
           </h2>
-          <p className="text-muted-foreground">{booking.bookingNumber} - {booking.organisationName || booking.clientName}</p>
+          <p className="text-sm sm:text-base text-muted-foreground truncate">{booking.bookingNumber} - {booking.organisationName || booking.clientName}</p>
         </div>
-        <Badge className={isGraded ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}>
-          {isGraded ? 'Ready for Final Approval' : 'Pending Approval'}
+        <Badge className={cn(
+          isGraded ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
+          "text-xs sm:text-sm px-2 sm:px-3 py-1 flex-shrink-0 whitespace-nowrap"
+        )}>
+          <span className="hidden sm:inline">
+            {isGraded ? 'Ready for Final Approval' : 'Pending Approval'}
+          </span>
+          <span className="sm:hidden">
+            {isGraded ? 'Ready' : 'Pending'}
+          </span>
         </Badge>
       </motion.div>
 
@@ -547,7 +556,7 @@ const BookingApproval = () => {
                 </div>
               )}
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
                 {isGraded ? (
                   <>
                     <Button
@@ -555,7 +564,7 @@ const BookingApproval = () => {
                       size="lg"
                       onClick={handleComplete}
                       disabled={completeBooking.isPending || !allProcessesComplete}
-                      className="w-auto"
+                      className="w-full sm:w-auto"
                     >
                       {completeBooking.isPending ? (
                         <>
@@ -573,6 +582,7 @@ const BookingApproval = () => {
                       variant="outline"
                       size="lg"
                       asChild
+                      className="w-full sm:w-auto"
                     >
                       <Link to={`/bookings/${id}/grading`}>
                         <Download />
@@ -587,6 +597,7 @@ const BookingApproval = () => {
                       size="lg"
                       onClick={handleApprove}
                       disabled={approveBooking.isPending || checkJobIdUnique.isPending || !erpJobNumber.trim()}
+                      className="w-full sm:w-auto"
                     >
                       {checkJobIdUnique.isPending ? (
                         <>
@@ -610,6 +621,7 @@ const BookingApproval = () => {
                       size="lg"
                       onClick={() => setShowCancelForm(true)}
                       disabled={approveBooking.isPending}
+                      className="w-full sm:w-auto"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel Booking
@@ -649,12 +661,13 @@ const BookingApproval = () => {
                 />
               </div>
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
                 <Button
                   variant="destructive"
                   size="lg"
                   onClick={handleCancel}
                   disabled={cancelBooking.isPending}
+                  className="w-full sm:w-auto"
                 >
                   {cancelBooking.isPending ? (
                     <>
@@ -676,6 +689,7 @@ const BookingApproval = () => {
                     setCancellationNotes("");
                   }}
                   disabled={cancelBooking.isPending}
+                  className="w-full sm:w-auto"
                 >
                   Go Back
                 </Button>
