@@ -444,7 +444,7 @@ const Clients = () => {
         {/* Invitations Tab */}
         {(isReseller || isAdmin) && (
           <TabsContent value="invitations" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold">Client Invitations</h3>
                 <p className="text-sm text-muted-foreground">
@@ -452,7 +452,7 @@ const Clients = () => {
                 </p>
               </div>
               <Select value={inviteStatusFilter} onValueChange={setInviteStatusFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -490,14 +490,15 @@ const Clients = () => {
                       isExpiringSoon && "border-warning/50 bg-warning/5"
                     )}>
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-3">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{invite.email}</span>
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1 space-y-2 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                              <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium break-words">{invite.email}</span>
                               <Badge
                                 variant="outline"
                                 className={cn(
+                                  "flex-shrink-0",
                                   isPending && "bg-warning/10 text-warning border-warning/20",
                                   isAccepted && "bg-success/10 text-success border-success/20",
                                   isExpired && "bg-destructive/10 text-destructive border-destructive/20"
@@ -509,7 +510,7 @@ const Clients = () => {
                                 {invite.status || 'pending'}
                               </Badge>
                               {isExpiringSoon && isPending && (
-                                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 flex-shrink-0">
                                   Expiring Soon
                                 </Badge>
                               )}
@@ -518,27 +519,27 @@ const Clients = () => {
                               <p>
                                 Role: <span className="font-medium capitalize">{invite.role}</span>
                               </p>
-                              <p>
+                              <p className="break-words">
                                 Sent: {new Date(invite.invitedAt).toLocaleDateString()} at {new Date(invite.invitedAt).toLocaleTimeString()}
                               </p>
                               {isPending && (
-                                <p className={cn(isExpiringSoon && "text-warning font-medium")}>
+                                <p className={cn(isExpiringSoon && "text-warning font-medium", "break-words")}>
                                   Expires: {expiresDate.toLocaleDateString()} ({Math.ceil((expiresDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))} days left)
                                 </p>
                               )}
                               {isAccepted && invite.acceptedAt && (
-                                <p className="text-success">
+                                <p className="text-success break-words">
                                   Accepted: {new Date(invite.acceptedAt).toLocaleDateString()} at {new Date(invite.acceptedAt).toLocaleTimeString()}
                                 </p>
                               )}
                               {isExpired && (
-                                <p className="text-destructive">
+                                <p className="text-destructive break-words">
                                   Expired: {expiresDate.toLocaleDateString()}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
                             {isPending && invite.token && (
                               <Button
                                 variant="outline"
@@ -548,6 +549,7 @@ const Clients = () => {
                                   navigator.clipboard.writeText(inviteUrl);
                                   toast.success('Invitation link copied to clipboard');
                                 }}
+                                className="w-full sm:w-auto"
                               >
                                 <Copy className="h-4 w-4 mr-1" />
                                 Copy Link
@@ -563,6 +565,7 @@ const Clients = () => {
                                   }
                                 }}
                                 disabled={cancelInvite.isPending}
+                                className="w-full sm:w-auto"
                               >
                                 <Trash2 className="h-4 w-4 mr-1" />
                                 Cancel

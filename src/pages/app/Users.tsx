@@ -316,56 +316,59 @@ const Users = () => {
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
               <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="flex items-center gap-4 py-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <UsersIcon className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-foreground truncate">{user.name}</p>
-                      <Badge className={cn("text-xs", roleColors[user.role])}>
-                        {user.role}
-                      </Badge>
-                      {getUserStatus(user) === 'pending' ? (
-                        <Badge variant="secondary" className="bg-warning/10 text-warning">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
-                      ) : getUserStatus(user) === 'active' ? (
-                        <Badge variant="secondary" className="bg-success/10 text-success">
-                          <UserCheck className="h-3 w-3 mr-1" />
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                          <UserX className="h-3 w-3 mr-1" />
-                          Inactive
-                        </Badge>
-                      )}
+                <CardContent className="flex flex-col sm:flex-row sm:items-center gap-4 py-4">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                      <UsersIcon className="h-6 w-6" />
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {user.email}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        {user.tenantName}
-                      </span>
-                      {user.lastLogin && (
-                        <span className="text-xs">
-                          Last login: {new Date(user.lastLogin).toLocaleDateString("en-GB")}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className="font-semibold text-foreground break-words">{user.name}</p>
+                        <Badge className={cn("text-xs flex-shrink-0", roleColors[user.role])}>
+                          {user.role}
+                        </Badge>
+                        {getUserStatus(user) === 'pending' ? (
+                          <Badge variant="secondary" className="bg-warning/10 text-warning flex-shrink-0">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                        ) : getUserStatus(user) === 'active' ? (
+                          <Badge variant="secondary" className="bg-success/10 text-success flex-shrink-0">
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-destructive/10 text-destructive flex-shrink-0">
+                            <UserX className="h-3 w-3 mr-1" />
+                            Inactive
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 min-w-0">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{user.email}</span>
                         </span>
-                      )}
+                        <span className="flex items-center gap-1 min-w-0">
+                          <Building2 className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{user.tenantName}</span>
+                        </span>
+                        {user.lastLogin && (
+                          <span className="text-xs">
+                            Last login: {new Date(user.lastLogin).toLocaleDateString("en-GB")}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-shrink-0 sm:flex-shrink-0">
                     {getUserStatus(user) === 'pending' ? (
                       <Button
                         variant="success"
                         size="sm"
                         onClick={() => handleApproveUser(user.id)}
                         disabled={approveUser.isPending}
+                        className="w-full sm:w-auto"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
                         Approve
@@ -384,6 +387,7 @@ const Users = () => {
                             ? "You cannot deactivate your own account"
                             : undefined
                         }
+                        className="w-full sm:w-auto"
                       >
                         {getUserStatus(user) === 'active' ? "Deactivate" : "Activate"}
                       </Button>
@@ -399,7 +403,7 @@ const Users = () => {
 
         {/* Reseller Invitations Tab */}
         <TabsContent value="invitations" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold">Reseller Invitations</h3>
               <p className="text-sm text-muted-foreground">
@@ -407,7 +411,7 @@ const Users = () => {
               </p>
             </div>
             <Select value={inviteStatusFilter} onValueChange={setInviteStatusFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -445,14 +449,15 @@ const Users = () => {
                     isExpiringSoon && "border-warning/50 bg-warning/5"
                   )}>
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-3">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{invite.email}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex-1 space-y-2 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium break-words">{invite.email}</span>
                             <Badge
                               variant="outline"
                               className={cn(
+                                "flex-shrink-0",
                                 isPending && "bg-warning/10 text-warning border-warning/20",
                                 isAccepted && "bg-success/10 text-success border-success/20",
                                 isExpired && "bg-destructive/10 text-destructive border-destructive/20"
@@ -464,7 +469,7 @@ const Users = () => {
                               {invite.status || 'pending'}
                             </Badge>
                             {isExpiringSoon && isPending && (
-                              <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                              <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 flex-shrink-0">
                                 Expiring Soon
                               </Badge>
                             )}
@@ -473,27 +478,27 @@ const Users = () => {
                             <p>
                               Role: <span className="font-medium capitalize">{invite.role}</span>
                             </p>
-                            <p>
+                            <p className="break-words">
                               Sent: {new Date(invite.invitedAt).toLocaleDateString()} at {new Date(invite.invitedAt).toLocaleTimeString()}
                             </p>
                             {isPending && (
-                              <p className={cn(isExpiringSoon && "text-warning font-medium")}>
+                              <p className={cn(isExpiringSoon && "text-warning font-medium", "break-words")}>
                                 Expires: {expiresDate.toLocaleDateString()} ({Math.ceil((expiresDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))} days left)
                               </p>
                             )}
                             {isAccepted && invite.acceptedAt && (
-                              <p className="text-success">
+                              <p className="text-success break-words">
                                 Accepted: {new Date(invite.acceptedAt).toLocaleDateString()} at {new Date(invite.acceptedAt).toLocaleTimeString()}
                               </p>
                             )}
                             {isExpired && (
-                              <p className="text-destructive">
+                              <p className="text-destructive break-words">
                                 Expired: {expiresDate.toLocaleDateString()}
                               </p>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
                           {isPending && invite.token && (
                             <Button
                               variant="outline"
@@ -503,6 +508,7 @@ const Users = () => {
                                 navigator.clipboard.writeText(inviteUrl);
                                 toast.success('Invitation link copied to clipboard');
                               }}
+                              className="w-full sm:w-auto"
                             >
                               <Copy className="h-4 w-4 mr-1" />
                               Copy Link
@@ -518,6 +524,7 @@ const Users = () => {
                                 }
                               }}
                               disabled={cancelInvite.isPending}
+                              className="w-full sm:w-auto"
                             >
                               <Trash2 className="h-4 w-4 mr-1" />
                               Cancel
