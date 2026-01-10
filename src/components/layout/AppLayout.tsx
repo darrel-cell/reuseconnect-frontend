@@ -140,6 +140,9 @@ export function AppLayout() {
       markAsRead(notification.id);
     }
     
+    // Close the notification popover
+    setIsNotificationPopoverOpen(false);
+    
     // Navigate if URL exists
     if (notification.url) {
       navigate(notification.url);

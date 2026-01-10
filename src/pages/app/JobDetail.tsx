@@ -101,7 +101,7 @@ const JobDetail = () => {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center gap-4"
       >
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
+        <Button variant="ghost" size="sm" asChild className="-ml-2 self-start sm:self-auto">
           <Link to="/jobs" className="text-inherit no-underline">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Jobs

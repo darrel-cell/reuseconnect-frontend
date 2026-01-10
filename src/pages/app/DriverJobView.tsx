@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -81,17 +81,30 @@ const DriverJobView = () => {
     manualHandlingRequirements,
   ]);
 
+  // Track previous job ID and status to detect when they actually change
+  const previousJobIdRef = useRef<string | undefined>(undefined);
+  const previousStatusRef = useRef<string | undefined>(undefined);
+
   // Initialize state from job data - clear form when job changes or status changes
   useEffect(() => {
-    // Reset form when job changes or status changes (to allow new evidence submission)
-    setPhotos([]);
-    setSignature(null);
-    setSealNumbers([]);
-    setNotes("");
-    setNewSealNumber("");
-    
-    // Initialize journey fields from job data if available
-    if (job) {
+    if (!job) return;
+
+    const jobIdChanged = job.id !== previousJobIdRef.current;
+    const statusChanged = job.status !== previousStatusRef.current;
+
+    // Reset evidence fields when job ID or status changes
+    if (jobIdChanged || statusChanged) {
+      setPhotos([]);
+      setSignature(null);
+      setSealNumbers([]);
+      setNotes("");
+      setNewSealNumber("");
+    }
+
+    // Only initialize journey fields when loading a NEW job (job ID changed)
+    // This ensures fields are populated on initial load but preserved after save/refetch
+    // When job is refetched after save, jobIdChanged will be false, so fields won't be reset
+    if (jobIdChanged && job.status === 'routed') {
       setDial2Collection(job.dial2Collection || "");
       setSecurityRequirements(job.securityRequirements || "");
       setIdRequired(job.idRequired || "");
@@ -101,6 +114,10 @@ const DriverJobView = () => {
       setRoadWorksPublicEvents(job.roadWorksPublicEvents || "");
       setManualHandlingRequirements(job.manualHandlingRequirements || "");
     }
+
+    // Update tracking refs to detect changes on next render
+    previousJobIdRef.current = job.id;
+    previousStatusRef.current = job.status;
   }, [job?.id, job?.status]);
 
   // Get next valid status for driver workflow - recalculate when job changes
@@ -556,20 +573,36 @@ const DriverJobView = () => {
                   }
                   
                   try {
-                    await updateJourneyFields.mutateAsync({
+                    // Save current field values before mutation to preserve them
+                    const savedFields = {
+                      dial2Collection: dial2Collection.trim(),
+                      securityRequirements: securityRequirements.trim(),
+                      idRequired: idRequired.trim(),
+                      loadingBayLocation: loadingBayLocation.trim(),
+                      vehicleHeightRestrictions: vehicleHeightRestrictions.trim(),
+                      doorLiftSize: doorLiftSize.trim(),
+                      roadWorksPublicEvents: roadWorksPublicEvents.trim(),
+                      manualHandlingRequirements: manualHandlingRequirements.trim(),
+                    };
+
+                    const updatedJob = await updateJourneyFields.mutateAsync({
                       jobId: id,
-                      fields: {
-                        dial2Collection: dial2Collection.trim(),
-                        securityRequirements: securityRequirements.trim(),
-                        idRequired: idRequired.trim(),
-                        loadingBayLocation: loadingBayLocation.trim(),
-                        vehicleHeightRestrictions: vehicleHeightRestrictions.trim(),
-                        doorLiftSize: doorLiftSize.trim(),
-                        roadWorksPublicEvents: roadWorksPublicEvents.trim(),
-                        manualHandlingRequirements: manualHandlingRequirements.trim(),
-                      },
+                      fields: savedFields,
                     });
+
+                    // Explicitly preserve the saved values in the form fields
+                    // Use the returned job data if available, otherwise use the values we just saved
+                    setDial2Collection(updatedJob?.dial2Collection || savedFields.dial2Collection);
+                    setSecurityRequirements(updatedJob?.securityRequirements || savedFields.securityRequirements);
+                    setIdRequired(updatedJob?.idRequired || savedFields.idRequired);
+                    setLoadingBayLocation(updatedJob?.loadingBayLocation || savedFields.loadingBayLocation);
+                    setVehicleHeightRestrictions(updatedJob?.vehicleHeightRestrictions || savedFields.vehicleHeightRestrictions);
+                    setDoorLiftSize(updatedJob?.doorLiftSize || savedFields.doorLiftSize);
+                    setRoadWorksPublicEvents(updatedJob?.roadWorksPublicEvents || savedFields.roadWorksPublicEvents);
+                    setManualHandlingRequirements(updatedJob?.manualHandlingRequirements || savedFields.manualHandlingRequirements);
+
                     toast.success("Journey information saved successfully!");
+                    // Refetch to ensure job data is up to date, but fields are already preserved above
                     refetchJob();
                   } catch (error) {
                     toast.error("Failed to save journey information", {
