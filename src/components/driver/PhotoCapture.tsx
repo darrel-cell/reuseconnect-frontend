@@ -1,7 +1,15 @@
-import { useState, useRef } from "react";
-import { Camera, X, Upload, Image as ImageIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, X, Upload, Image as ImageIcon, RotateCcw, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface PhotoCaptureProps {
   photos: string[];
@@ -11,7 +19,154 @@ interface PhotoCaptureProps {
 
 export function PhotoCapture({ photos, onPhotosChange, maxPhotos = 10 }: PhotoCaptureProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [error, setError] = useState<string | null>(null);
+
+  // Cleanup stream when component unmounts or camera closes
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraOpen(false);
+    setError(null);
+  };
+
+  const startCamera = async () => {
+    try {
+      setError(null);
+      
+      // Stop existing stream if any
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      // Open dialog first (shows loading state)
+      setIsCameraOpen(true);
+
+      // Request camera access
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (constraintErr) {
+        // If specific constraints fail, try with default settings
+        console.warn('Camera constraints not supported, trying default settings:', constraintErr);
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      setStream(mediaStream);
+      
+      // Set video stream to video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      // Show error message
+      let errorMsg = 'Failed to access camera. Please check your browser permissions.';
+      if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+        errorMsg = 'Camera access denied. Please allow camera access in your browser settings.';
+      } else if (errorMessage.includes('not found') || errorMessage.includes('NotFoundError')) {
+        errorMsg = 'No camera found. Please connect a camera and try again.';
+      }
+      
+      setError(errorMsg);
+      
+      // Show error in toast notification
+      toast.error('Camera Access Failed', {
+        description: errorMsg,
+        duration: 5000,
+      });
+      
+      // Dialog will remain open showing the error message
+      // User can close it manually via the Cancel button or X button
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw current video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to data URL (base64 image)
+    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    
+    // Add photo to photos array
+    if (photos.length < maxPhotos) {
+      onPhotosChange([...photos, photoDataUrl]);
+      
+      // Show success feedback briefly before closing
+      setTimeout(() => {
+        stopCamera();
+      }, 500);
+    } else {
+      setError(`Maximum ${maxPhotos} photos reached.`);
+    }
+  };
+
+  const switchCamera = async () => {
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+    setFacingMode(newFacingMode);
+    
+    // Restart camera with new facing mode
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: newFacingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error('Error switching camera:', err);
+      setError('Failed to switch camera. Please try again.');
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -33,7 +188,6 @@ export function PhotoCapture({ photos, onPhotosChange, maxPhotos = 10 }: PhotoCa
 
     // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   const removePhoto = (index: number) => {
@@ -41,7 +195,7 @@ export function PhotoCapture({ photos, onPhotosChange, maxPhotos = 10 }: PhotoCa
   };
 
   const openCamera = () => {
-    cameraInputRef.current?.click();
+    startCamera();
   };
 
   const openFilePicker = () => {
@@ -75,16 +229,75 @@ export function PhotoCapture({ photos, onPhotosChange, maxPhotos = 10 }: PhotoCa
         </Button>
       </div>
 
-      {/* Hidden file inputs */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileSelect}
-        className="hidden"
-        multiple={maxPhotos > 1}
-      />
+      {/* Camera Preview Dialog */}
+      <Dialog open={isCameraOpen} onOpenChange={(open) => {
+        if (!open) stopCamera();
+      }}>
+        <DialogContent className="max-w-4xl w-full p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle>Camera Preview</DialogTitle>
+            <DialogDescription>
+              Position yourself and click "Capture Photo" to take the picture
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="relative bg-black rounded-lg overflow-hidden">
+            {/* Video preview */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-auto max-h-[60vh] object-contain"
+            />
+            
+            {/* Canvas for capturing (hidden) */}
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Error message */}
+            {error && (
+              <div className="absolute top-4 left-4 right-4 bg-destructive text-destructive-foreground p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+          </div>
+          
+          {/* Camera controls */}
+          <div className="flex gap-2 px-6 pb-6 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={stopCamera}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            
+            {/* Switch camera button (only show on devices with multiple cameras) */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={switchCamera}
+              className="flex-shrink-0"
+              title="Switch camera (front/back)"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              onClick={capturePhoto}
+              disabled={photos.length >= maxPhotos}
+              className="flex-1 bg-primary text-primary-foreground"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Capture Photo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden file input for upload */}
       <input
         ref={fileInputRef}
         type="file"
