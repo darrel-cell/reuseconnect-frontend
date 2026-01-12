@@ -5,7 +5,7 @@ import { mockJobs } from '@/mocks/mock-data';
 import { mockBookings } from '@/mocks/mock-entities';
 import { delay, shouldSimulateError, ApiError, ApiErrorType } from './api-error';
 import { assetCategories } from '@/mocks/mock-data';
-import { calculateReuseCO2e, calculateBuybackEstimate, calculateRoundTripDistance, geocodePostcode, kmToMiles, calculateTravelEmissions } from '@/lib/calculations';
+import { calculateReuseCO2e, calculateRoundTripDistance, geocodePostcode, kmToMiles, calculateTravelEmissions } from '@/lib/calculations';
 import { USE_MOCK_API } from '@/lib/config';
 import { apiClient } from './api-client';
 import type { User } from '@/types/auth';
@@ -132,7 +132,8 @@ class BookingService {
 
     // Calculate estimates
     const estimatedCO2e = calculateReuseCO2e(request.assets, assetCategories);
-    const estimatedBuyback = calculateBuybackEstimate(request.assets, assetCategories);
+    // Buyback calculation is now done via backend API (removed from frontend)
+    const estimatedBuyback = 0; // Mock mode - buyback should come from backend API
 
     // Get client info (would come from client service in real app)
     const { mockClients } = await import('@/mocks/mock-entities');

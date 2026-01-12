@@ -42,8 +42,9 @@ import { useClients } from "@/hooks/useClients";
 import { useOrganisationProfileComplete } from "@/hooks/useOrganisationProfile";
 import { useAssetCategories } from "@/hooks/useAssets";
 import { useCO2Calculation } from "@/hooks/useCO2";
+import { useBuybackCalculation } from "@/hooks/useBuyback";
 import { useCreateBooking } from "@/hooks/useBooking";
-import { geocodePostcode, calculateBuybackEstimate } from "@/lib/calculations";
+import { geocodePostcode } from "@/lib/calculations";
 
 const steps = [
   { id: 1, title: "Site Details", icon: Building2 },
@@ -114,6 +115,16 @@ const Booking = () => {
 
   const { data: co2Calculation, isLoading: isCalculatingCO2, isFetching: isFetchingCO2 } = useCO2Calculation(co2CalculationRequest);
   
+  // Calculate buyback estimate using backend API
+  const buybackCalculationRequest = useMemo(() => {
+    if (selectedAssets.length === 0) return null;
+    return {
+      assets: selectedAssets,
+    };
+  }, [selectedAssets]);
+
+  const { data: buybackCalculation, isLoading: isCalculatingBuyback, isFetching: isFetchingBuyback } = useBuybackCalculation(buybackCalculationRequest);
+  
   // Reseller organisation profile completion - MUST be called before any early returns (React Hooks rule)
   const { data: isResellerProfileComplete = false } = useOrganisationProfileComplete(isReseller);
   
@@ -177,11 +188,8 @@ const Booking = () => {
 
   const totalAssets = selectedAssets.reduce((sum, a) => sum + a.quantity, 0);
   
-  // Calculate buyback estimate using conservative low-end formula
-  // (3-year-old equipment, Grade B, based on category and quantity only)
-  const buybackEstimate = assetCategories.length > 0 && selectedAssets.length > 0
-    ? calculateBuybackEstimate(selectedAssets, assetCategories)
-    : 0;
+  // Get buyback estimate from backend API
+  const buybackEstimate = buybackCalculation?.estimatedBuyback ?? 0;
 
   // Use CO2 calculation from service (useCO2Calculation hook)
   // Use nullish coalescing to keep previous values during refetch (placeholderData handles this)
