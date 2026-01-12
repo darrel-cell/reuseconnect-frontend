@@ -214,9 +214,9 @@ const JobDetail = () => {
                         {job.driver.vehicleFuelType && ` • ${job.driver.vehicleFuelType}`}
                       </Badge>
                     )}
-                    {job.driver.eta && (
+                    {(job.status === "routed" || job.status === "en-route") && (
                       <Badge variant="secondary" className="bg-warning/20 text-warning-foreground">
-                        ETA: {job.driver.eta}
+                        ETA: {job.driver.eta || "--:--"}
                       </Badge>
                     )}
                   </div>

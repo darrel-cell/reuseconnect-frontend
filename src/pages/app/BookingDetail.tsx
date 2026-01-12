@@ -385,9 +385,9 @@ const BookingDetail = () => {
                             {driver.vehicleFuelType && ` • ${driver.vehicleFuelType}`}
                           </Badge>
                         )}
-                        {driver.eta && (
+                        {(relatedJob?.status === "routed" || relatedJob?.status === "en-route") && (
                           <Badge variant="secondary" className="bg-warning/20 text-warning-foreground">
-                            ETA: {driver.eta}
+                            ETA: {driver.eta || "--:--"}
                           </Badge>
                         )}
                       </div>
@@ -468,9 +468,9 @@ const BookingDetail = () => {
                             {driver.vehicleFuelType && ` • ${driver.vehicleFuelType}`}
                           </Badge>
                         )}
-                        {driver.eta && (
+                        {(relatedJob?.status === "routed" || relatedJob?.status === "en-route") && (
                           <Badge variant="secondary" className="bg-warning/20 text-warning-foreground">
-                            ETA: {driver.eta}
+                            ETA: {driver.eta || "--:--"}
                           </Badge>
                         )}
                       </div>

@@ -281,9 +281,9 @@ const BookingCertificates = () => {
                       {relatedJob.driver.vehicleFuelType && ` • ${relatedJob.driver.vehicleFuelType}`}
                     </Badge>
                   )}
-                  {relatedJob.driver.eta && (
+                  {(relatedJob.status === "routed" || relatedJob.status === "en-route") && (
                     <Badge variant="secondary" className="bg-warning/20 text-warning-foreground">
-                      ETA: {relatedJob.driver.eta}
+                      ETA: {relatedJob.driver.eta || "--:--"}
                     </Badge>
                   )}
                 </div>

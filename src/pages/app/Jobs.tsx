@@ -191,11 +191,11 @@ const Jobs = () => {
                 </div>
               </div>
 
-              {/* Driver Info (if en-route) */}
-              {job.status === "en-route" && job.driver && (
+              {/* Driver Info (if routed or en-route) */}
+              {job.driver && (job.status === "routed" || job.status === "en-route") && (
                 <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-4 text-sm">
                   <Badge variant="secondary" className="bg-warning/20 text-warning-foreground">
-                    ETA: {job.driver.eta}
+                    ETA: {job.driver.eta || "--:--"}
                   </Badge>
                   <span className="text-muted-foreground">
                     Driver: <span className="text-foreground">{job.driver.name}</span>

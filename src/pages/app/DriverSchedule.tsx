@@ -266,10 +266,10 @@ const DriverSchedule = () => {
                                 {job.assets.reduce((sum, asset) => sum + asset.quantity, 0)} assets
                               </span>
                             </div>
-                            {job.driver?.eta && (
+                            {(job.status === "routed" || job.status === "en-route") && (
                               <div className="flex items-center gap-1.5">
                                 <Clock className="h-3.5 w-3.5" />
-                                <span>ETA: {job.driver.eta}</span>
+                                <span>ETA: {job.driver?.eta || "--:--"}</span>
                               </div>
                             )}
                           </div>

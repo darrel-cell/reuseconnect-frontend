@@ -55,6 +55,7 @@ interface BackendDriver {
   vehicleType?: 'van' | 'truck' | 'car';
   vehicleFuelType?: 'petrol' | 'diesel' | 'electric';
   phone?: string;
+  eta?: string;
 }
 
 interface BackendEvidence {
@@ -129,6 +130,7 @@ function transformDriver(driver: BackendDriver | null | undefined): Driver | und
     vehicleType: driver.vehicleType || 'van',
     vehicleFuelType: driver.vehicleFuelType || 'diesel',
     phone: driver.phone || driver.email || 'N/A',
+    eta: driver.eta,
   };
 }
 
