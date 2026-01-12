@@ -47,10 +47,12 @@ const CO2eDashboard = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const isReseller = user?.role === 'reseller';
   const { data: clients = [], isLoading: isLoadingClients } = useClients();
-  const { data: jobs = [], isLoading: isLoadingJobs } = useJobs();
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const { data: jobs = [], isLoading: isLoadingJobs } = useJobs(
+    isReseller && selectedClientId ? { clientId: selectedClientId } : undefined
+  );
   const { data: stats, isLoading: isLoadingStats } = useDashboardStats();
   const { data: assetCategories = [] } = useAssetCategories();
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
@@ -64,17 +66,7 @@ const CO2eDashboard = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Filter jobs by selected client if reseller has selected a client
-  const filteredJobs = useMemo(() => {
-    if (!isReseller || !selectedClientId) {
-      return jobs;
-    }
-    const selectedClient = clients.find(c => c.id === selectedClientId);
-    if (!selectedClient) return jobs;
-    return jobs.filter(j => j.clientName === selectedClient.name);
-  }, [jobs, selectedClientId, clients, isReseller]);
-
-  // Calculate stats for selected client or all clients
+  const filteredJobs = jobs;
   const clientStats = useMemo(() => {
     const clientJobs = filteredJobs;
     const totalSaved = clientJobs.reduce((sum, j) => sum + j.co2eSaved, 0);
@@ -95,27 +87,22 @@ const CO2eDashboard = () => {
     };
   }, [filteredJobs]);
 
-  // Generate monthly data for charts - show last 6 months with zeros for months without data
   const monthlyData = useMemo(() => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();
     
-    // Initialize last 6 months with zeros
     const monthlyTotals: Record<string, { saved: number; travel: number }> = {};
     const monthsToShow: Array<{ month: string; year: number; saved: number; travel: number }> = [];
     
-    // Create array of last 6 months
     for (let i = 5; i >= 0; i--) {
       const monthIndex = (currentMonth - i + 12) % 12;
       const year = currentMonth - i < 0 ? currentYear - 1 : currentYear;
       const monthKey = `${monthNames[monthIndex]}-${year}`;
       
-      // Initialize with zeros
       monthlyTotals[monthKey] = { saved: 0, travel: 0 };
       
-      // Add to monthsToShow array in order
       monthsToShow.push({
         month: monthNames[monthIndex],
         year: year,
@@ -131,14 +118,12 @@ const CO2eDashboard = () => {
       const jobMonth = date.getMonth();
       const monthKey = `${monthNames[jobMonth]}-${jobYear}`;
       
-      // Only include if it's in our last 6 months range
       if (monthlyTotals[monthKey] !== undefined) {
         monthlyTotals[monthKey].saved += job.co2eSaved;
         monthlyTotals[monthKey].travel += job.travelEmissions;
       }
     });
     
-    // Update monthsToShow with actual totals
     let monthIndex = 0;
     for (let i = 5; i >= 0; i--) {
       const monthIdx = (currentMonth - i + 12) % 12;
@@ -153,7 +138,6 @@ const CO2eDashboard = () => {
     return monthsToShow;
   }, [filteredJobs]);
 
-  // Calculate CO2 stats per client for reseller
   const clientCO2Stats = useMemo(() => {
     if (!isReseller) return [];
     
@@ -186,12 +170,9 @@ const CO2eDashboard = () => {
     );
   }, [clientCO2Stats, clientSearchQuery]);
 
-  // Asset category breakdown - calculate from actual jobs, show all categories
   const categoryData = useMemo(() => {
-    // Calculate CO2e saved per category from jobs
     const categoryTotals: Record<string, number> = {};
     
-    // Initialize all categories with zero
     assetCategories.forEach(category => {
       categoryTotals[category.id] = 0;
     });
@@ -199,7 +180,6 @@ const CO2eDashboard = () => {
     // Fill in actual data from jobs
     filteredJobs.forEach(job => {
       job.assets.forEach(asset => {
-        // Try to find category by ID or name
         const categoryId = asset.categoryId || asset.category;
         const category = assetCategories.find(c => 
           c.id === categoryId || c.name === (asset.categoryName || asset.category)
@@ -213,7 +193,6 @@ const CO2eDashboard = () => {
       });
     });
     
-    // Convert to array with all categories, sorted by value descending
     const categoryArray = assetCategories
       .map(category => ({
         id: category.id,
@@ -222,10 +201,8 @@ const CO2eDashboard = () => {
       }))
       .sort((a, b) => b.value - a.value); // Sort by value descending
     
-    // Calculate total for percentage calculation
     const totalCO2e = categoryArray.reduce((sum, cat) => sum + cat.value, 0);
     
-    // Map to chart data with percentages - colors for all 7 categories
     const colors = [
       "hsl(168, 70%, 35%)",  // Teal
       "hsl(168, 60%, 45%)",  // Teal lighter
@@ -248,7 +225,6 @@ const CO2eDashboard = () => {
   const totalTravel = clientStats.totalTravel;
   const netBenefit = clientStats.netBenefit;
 
-  // Wait for auth to load before checking role
   if (isAuthLoading || isLoadingJobs || isLoadingStats || (isReseller && isLoadingClients)) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -286,8 +262,6 @@ const CO2eDashboard = () => {
     },
   ];
 
-  // For resellers: show split layout with client list on left
-  // Check both user?.role and isReseller to ensure we catch the reseller role
   if (user && (user.role === 'reseller' || isReseller)) {
     return (
       <div className="flex gap-6 h-[calc(100vh-8rem)]">
@@ -676,7 +650,6 @@ const CO2eDashboard = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       {(() => {
                         const chartData = filteredJobs.slice(0, 5).map(j => {
-                          // Format date to show month and year
                           const date = new Date(j.scheduledDate);
                           const month = date.toLocaleDateString('en-GB', { month: 'short' });
                           const year = date.getFullYear();
@@ -707,7 +680,6 @@ const CO2eDashboard = () => {
                                 const { x, y, payload, index } = props;
                                 if (!payload) return null;
                                 
-                                // Find the matching data point
                                 const value = payload.value || payload;
                                 const data = chartData.find(d => d.name === value);
                                 if (!data) return null;
@@ -727,7 +699,6 @@ const CO2eDashboard = () => {
                                 const siteName = data.siteName || '';
                                 const date = data.date || '';
                                 
-                                // Check if text would overflow
                                 const organisationOverflow = organisationName.length > maxChars;
                                 const siteNameOverflow = siteName.length > maxChars;
                                 const dateOverflow = date.length > maxChars;
@@ -1082,10 +1053,9 @@ const CO2eDashboard = () => {
                         height={selectedClientId ? 80 : 100}
                          tick={(props: any) => {
                            const { x, y, payload, index } = props;
-                           if (!payload) return null;
-                           
-                           // Find the matching data point
-                           const value = payload.value || payload;
+                          if (!payload) return null;
+                          
+                          const value = payload.value || payload;
                            const data = chartData.find(d => d.name === value);
                            if (!data) return null;
                            
@@ -1115,10 +1085,9 @@ const CO2eDashboard = () => {
                              // Truncate text on narrow screens to prevent overflow
                              organisationName = truncateText(organisationName, maxChars);
                              siteName = truncateText(siteName, maxChars);
-                           }
-                           
-                           // Check if text would overflow
-                           const organisationOverflow = organisationName.length > maxChars;
+                          }
+                          
+                          const organisationOverflow = organisationName.length > maxChars;
                            const siteNameOverflow = siteName.length > maxChars;
                            const dateOverflow = date.length > maxChars;
                            

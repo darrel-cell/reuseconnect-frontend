@@ -1,6 +1,3 @@
-// Booking Lifecycle Types
-// Authoritative lifecycle: PENDING → CREATED → SCHEDULED → COLLECTED → SANITISED → GRADED → COMPLETED
-
 export type BookingLifecycleStatus = 
   | 'pending'       // Booking submitted by client/reseller, awaiting admin approval
   | 'created'       // Booking approved by admin, now active
@@ -10,8 +7,6 @@ export type BookingLifecycleStatus =
   | 'graded'        // Admin/Ops have graded assets
   | 'completed';    // Final state - all processes complete
 
-// Status transition rules
-// Note: 'cancelled' is a special status outside the lifecycle
 export const lifecycleTransitions: Record<BookingLifecycleStatus, (BookingLifecycleStatus | 'cancelled')[]> = {
   pending: ['created', 'cancelled'],
   created: ['scheduled', 'cancelled'],
@@ -22,7 +17,6 @@ export const lifecycleTransitions: Record<BookingLifecycleStatus, (BookingLifecy
   completed: [], // Terminal state
 };
 
-// Role-based transition permissions
 export const roleTransitionPermissions: Record<string, BookingLifecycleStatus[]> = {
   admin: ['scheduled', 'sanitised', 'graded', 'completed'],
   client: [], // Clients cannot change booking status
@@ -40,7 +34,6 @@ export function isValidTransition(
   // Allow same status (no-op)
   if (from === to) return true;
   
-  // Check if transition is in allowed list
   const allowed = lifecycleTransitions[from] || [];
   return allowed.includes(to);
 }

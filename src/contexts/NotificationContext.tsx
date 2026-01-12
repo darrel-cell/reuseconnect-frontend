@@ -3,7 +3,6 @@ import { createContext, useContext, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 import { notificationsService } from '@/services/notifications.service';
-import { USE_MOCK_API } from '@/lib/config';
 
 // Notification type definition
 export interface Notification {
@@ -133,13 +132,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return result;
       } catch (error) {
         console.error('[NotificationContext] Failed to fetch notifications:', error);
-        // Fallback to mock data if API fails and we're in mock mode
-        if (USE_MOCK_API) {
-          return {
-            notifications: getNotificationsByRole(user?.role || 'client'),
-            total: 0,
-          };
-        }
+        // Return empty notifications on error
         return { notifications: [], total: 0 };
       }
     },

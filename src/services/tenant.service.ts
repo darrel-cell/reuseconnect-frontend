@@ -145,9 +145,6 @@ class TenantService {
     if (branding.primaryColor !== undefined) tenant.primaryColor = branding.primaryColor;
     if (branding.accentColor !== undefined) tenant.accentColor = branding.accentColor;
 
-    // Note: In production, this would be persisted via API
-    // React Query will handle caching automatically
-
     return tenant;
   }
 }

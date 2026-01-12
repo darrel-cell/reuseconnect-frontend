@@ -58,7 +58,6 @@ const DriverJobView = () => {
   const [roadWorksPublicEvents, setRoadWorksPublicEvents] = useState("");
   const [manualHandlingRequirements, setManualHandlingRequirements] = useState("");
 
-  // Check if all journey fields are filled (all are required)
   const areJourneyFieldsValid = useMemo(() => {
     return (
       dial2Collection.trim() !== "" &&
@@ -85,7 +84,6 @@ const DriverJobView = () => {
   const previousJobIdRef = useRef<string | undefined>(undefined);
   const previousStatusRef = useRef<string | undefined>(undefined);
 
-  // Initialize state from job data - clear form when job changes or status changes
   useEffect(() => {
     if (!job) return;
 
@@ -115,25 +113,18 @@ const DriverJobView = () => {
       setManualHandlingRequirements(job.manualHandlingRequirements || "");
     }
 
-    // Update tracking refs to detect changes on next render
     previousJobIdRef.current = job.id;
     previousStatusRef.current = job.status;
   }, [job?.id, job?.status]);
 
-  // Get next valid status for driver workflow - recalculate when job changes
-  // MUST be called before any early returns to follow Rules of Hooks
-  // Driver can work on jobs in: routed, en_route, arrived, collected
-  // Once at "warehouse" or beyond, driver's role is completed and they can't access the job
   const nextStatus = useMemo((): WorkflowStatus | null => {
     if (!job) return null;
     const statusTransitions: Record<string, WorkflowStatus> = {
-      'routed': 'en-route',      // Submit evidence for en-route → move to en-route
-      'en-route': 'arrived',     // Submit evidence for arrived → move to arrived
-      'arrived': 'collected',    // Submit evidence for collected → move to collected
-      'collected': 'warehouse',  // Submit evidence for warehouse → move to warehouse
+      'routed': 'en-route',
+      'en-route': 'arrived',
+      'arrived': 'collected',
+      'collected': 'warehouse',
     };
-    
-    // Drivers can also mark as "completed" from "collected" (alternative to warehouse)
     // But we'll show "warehouse" as the primary next status
     // "completed" can be accessed via a separate action if needed
     return statusTransitions[job.status] || null;
@@ -163,14 +154,12 @@ const DriverJobView = () => {
     return null;
   }, [job?.status, nextStatus]);
 
-  // Check if driver needs to submit evidence (i.e., if next status requires evidence)
   const currentStatusRequiresEvidence = useMemo(() => {
     if (!job || !nextStatus) return false;
     // Driver needs to submit evidence if the next status requires evidence
     return statusesRequiringEvidence.includes(nextStatus);
   }, [job?.status, nextStatus]);
 
-  // Check if driver can edit this job (base check - job status must be editable)
   const canEditBase = useMemo(() => canDriverEditJob(job), [job]);
 
   // Redirect if job is beyond driver's editable range (warehouse, sanitised, graded, completed)
@@ -182,26 +171,22 @@ const DriverJobView = () => {
     }
   }, [job, canEditBase, navigate]);
 
-  // Get evidence for the NEXT status (driver always submits evidence for next status)
-  // In DriverJobView, we show evidence for nextStatus because driver is preparing to move to that status
   const evidenceForNextStatus = useMemo(() => {
     if (!job?.evidence || !evidenceTargetStatus) return null;
     
     const normalizedTarget = normalizeStatus(evidenceTargetStatus);
     
-    // Find evidence for the next status (normalize for comparison)
     if (Array.isArray(job.evidence)) {
       return job.evidence.find((ev: any) => {
         const evStatus = normalizeStatus(ev.status || '');
         return evStatus === normalizedTarget;
       }) || null;
     }
-    // Backward compatibility: if evidence is a single object, check if it matches
+    // Single evidence object (backward compatibility)
     const evStatus = normalizeStatus((job.evidence as any).status || '');
     return evStatus === normalizedTarget ? job.evidence : null;
   }, [job?.evidence, evidenceTargetStatus]);
 
-  // Get all evidence for viewing (for non-editable statuses)
   const allEvidence = useMemo(() => {
     if (!job?.evidence) return [];
     if (Array.isArray(job.evidence)) {
@@ -210,8 +195,6 @@ const DriverJobView = () => {
     return [job.evidence];
   }, [job?.evidence]);
 
-  // Check if evidence has already been submitted for the next status (immutable)
-  // This determines if the form should be read-only
   const hasExistingEvidence = useMemo(() => {
     if (!evidenceForNextStatus) return false;
     
@@ -375,7 +358,6 @@ const DriverJobView = () => {
             toast.error("Evidence already exists", {
               description: "Evidence for this status already exists. The page will refresh to show the current state.",
             });
-            // Refetch to get latest job data
             refetchJob();
           } else {
             toast.error("Failed to save evidence", {

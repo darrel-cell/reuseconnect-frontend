@@ -1,18 +1,5 @@
-// Mock CO₂ Calculation Service
-import { assetCategories } from '@/mocks/mock-data';
-import { 
-  calculateReuseCO2e, 
-  calculateTravelEmissions,
-  calculateRoundTripDistance,
-  calculateAllVehicleEmissions,
-  kmToMiles,
-  WAREHOUSE_POSTCODE
-} from '@/lib/calculations';
-import { delay, shouldSimulateError, ApiError, ApiErrorType } from './api-error';
-import { USE_MOCK_API } from '@/lib/config';
+// CO₂ Calculation Service
 import { apiClient } from './api-client';
-
-const SERVICE_NAME = 'co2';
 
 export interface CO2CalculationRequest {
   assets: Array<{
@@ -56,15 +43,6 @@ const co2eEquivalencies = {
 
 class CO2Service {
   async calculateCO2e(request: CO2CalculationRequest): Promise<CO2CalculationResponse> {
-    // Use real API if not using mocks
-    if (!USE_MOCK_API) {
-      return this.calculateCO2eAPI(request);
-    }
-
-    return this.calculateCO2eMock(request);
-  }
-
-  private async calculateCO2eAPI(request: CO2CalculationRequest): Promise<CO2CalculationResponse> {
     const payload: any = {
       assets: request.assets,
     };
@@ -85,110 +63,14 @@ class CO2Service {
     return response;
   }
 
-  private async calculateCO2eMock(request: CO2CalculationRequest): Promise<CO2CalculationResponse> {
-    await delay(500);
-
-    // Simulate errors
-    if (shouldSimulateError(SERVICE_NAME)) {
-      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
-      throw new ApiError(
-        config.errorType || ApiErrorType.SERVER_ERROR,
-        'Failed to calculate CO₂e. Please try again.',
-        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
-      );
-    }
-
-    // Calculate reuse savings
-    const reuseSavings = calculateReuseCO2e(request.assets, assetCategories);
-
-    // Calculate distance using road distance (async)
-    let distance: number;
-    if (request.distanceKm !== undefined) {
-      // Use provided distance
-      distance = request.distanceKm;
-    } else if (request.collectionCoordinates) {
-      // Calculate road distance from collection site to warehouse (round trip)
-      try {
-        distance = await calculateRoundTripDistance(
-          request.collectionCoordinates.lat,
-          request.collectionCoordinates.lng
-        );
-      } catch (error) {
-        console.error('Error calculating road distance in mock:', error);
-        // Fallback to default distance if routing API fails
-        distance = 80;
-      }
-    } else {
-      // Default fallback
-      distance = 80;
-    }
-
-    // Calculate emissions for all vehicle types
-    const vehicleEmissions = calculateAllVehicleEmissions(distance);
-    
-    // Use selected vehicle type or default to petrol
-    const vehicleType = request.vehicleType || 'petrol';
-    // Handle electric vehicles explicitly (0 is falsy, so we need to check the key exists)
-    const travelEmissions = vehicleType === 'electric' 
-      ? 0 
-      : (vehicleEmissions[vehicleType as keyof typeof vehicleEmissions] ?? vehicleEmissions.petrol);
-
-    // Calculate net impact using selected vehicle type
-    const netImpact = reuseSavings - travelEmissions;
-
-    // Calculate equivalencies
-    const equivalencies = {
-      treesPlanted: co2eEquivalencies.treesPlanted(netImpact),
-      householdDays: co2eEquivalencies.householdDays(netImpact),
-      carMiles: co2eEquivalencies.carMiles(netImpact),
-      flightHours: co2eEquivalencies.flightHours(netImpact),
-    };
-
-    return {
-      reuseSavings,
-      travelEmissions,
-      netImpact,
-      distanceKm: distance,
-      distanceMiles: kmToMiles(distance),
-      vehicleEmissions,
-      equivalencies,
-    };
-  }
-
   async getJobCO2e(jobId: string): Promise<CO2CalculationResponse | null> {
-    await delay(500);
-
-    // Simulate errors
-    if (shouldSimulateError(SERVICE_NAME)) {
-      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
-      if (config.errorType === ApiErrorType.NOT_FOUND) {
-        throw new ApiError(
-          ApiErrorType.NOT_FOUND,
-          `CO₂e data for job "${jobId}" was not found.`,
-          404,
-          { jobId }
-        );
-      }
-      throw new ApiError(
-        config.errorType || ApiErrorType.NETWORK_ERROR,
-        'Failed to fetch CO₂e data. Please try again.',
-        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
-      );
+    try {
+      const response = await apiClient.get<CO2CalculationResponse>(`/co2/job/${jobId}`);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch CO₂e data for job:', error);
+      return null;
     }
-
-    // This would fetch from backend in real implementation
-    // For now, return mock data
-    return {
-      reuseSavings: 50000,
-      travelEmissions: 100,
-      netImpact: 49900,
-      equivalencies: {
-        treesPlanted: 2376,
-        householdDays: 1848,
-        carMiles: 237619,
-        flightHours: 199,
-      },
-    };
   }
 }
 

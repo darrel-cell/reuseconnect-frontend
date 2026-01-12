@@ -12,10 +12,7 @@ async function calculateRoadDistanceOSRM(
   lon2: number
 ): Promise<number | null> {
   try {
-    // OSRM route API format: /route/v1/{profile}/{coordinates}?overview=false
-    // Use driving profile for road distance
-    // Note: OSRM public demo uses HTTP (router.project-osrm.org doesn't support HTTPS)
-    // For production, consider using a self-hosted OSRM instance or OpenRouteService
+    // OSRM public demo uses HTTP (router.project-osrm.org doesn't support HTTPS)
     const url = `http://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
     
     const controller = new AbortController();
@@ -116,7 +113,6 @@ export async function calculateRoundTripRoadDistance(
   warehouseLat: number,
   warehouseLng: number
 ): Promise<number> {
-  // Calculate one-way road distance
   const oneWay = await calculateRoadDistance(
     collectionLat,
     collectionLng,

@@ -51,7 +51,6 @@ export function useCalculateResaleValue(category?: string, grade?: GradingRecord
   });
 }
 
-// Legacy hook for backward compatibility - returns a function
 export function useCalculateResaleValueFn() {
   return async (category: string, grade: GradingRecord['grade'], quantity: number) => {
     return gradingService.calculateResaleValue(category, grade, quantity);

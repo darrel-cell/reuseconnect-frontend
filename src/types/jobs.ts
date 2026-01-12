@@ -118,6 +118,7 @@ export interface DashboardStats {
 export interface JobsFilter {
   status?: WorkflowStatus | 'all';
   clientName?: string;
+  clientId?: string;
   searchQuery?: string;
   limit?: number;
   offset?: number;

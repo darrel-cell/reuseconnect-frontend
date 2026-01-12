@@ -16,10 +16,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const grades: { value: 'A' | 'B' | 'C'; label: string; color: string }[] = [
+const grades: { value: 'A' | 'B' | 'C' | 'D'; label: string; color: string }[] = [
   { value: 'A', label: 'Grade A', color: 'bg-success/10 text-success' },
   { value: 'B', label: 'Grade B', color: 'bg-info/10 text-info' },
   { value: 'C', label: 'Grade C', color: 'bg-warning/10 text-warning' },
+  { value: 'D', label: 'Grade D', color: 'bg-destructive/10 text-destructive' },
 ];
 
 const Grading = () => {
@@ -39,7 +40,6 @@ const Grading = () => {
   const [notes, setNotes] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   
-  // Get selected asset for resale value calculation
   const selectedAsset = booking?.assets.find(a => a.categoryId === selectedAssetId);
   const { data: estimatedResaleValue = 0 } = useCalculateResaleValue(
     selectedAsset?.categoryName || selectedAsset?.categoryId,
@@ -138,7 +138,6 @@ const Grading = () => {
 
   const totalResaleValue = records.reduce((sum, r) => sum + (r.resaleValue * (booking.assets.find(a => a.categoryId === r.assetId)?.quantity || 1)), 0);
 
-  // Check if all assets are graded
   const allAssetsGraded = booking?.assets.every(asset => {
     return records.some(record => record.assetId === asset.categoryId);
   });

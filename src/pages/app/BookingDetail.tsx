@@ -11,19 +11,9 @@ import { getStatusLabelExtended, getStatusColor } from "@/types/booking-lifecycl
 import type { BookingLifecycleStatus } from "@/types/booking-lifecycle";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
-import type { Driver } from "@/types/jobs";
 import { canDriverEditJob } from "@/utils/job-helpers";
-
-// Driver vehicle information mapping (same as Assignment page)
-const driverVehicleInfo: Record<string, { vehicleReg: string; vehicleType: 'van' | 'truck' | 'car'; vehicleFuelType: 'petrol' | 'diesel' | 'electric' }> = {
-  'user-4': { vehicleReg: 'AB12 CDE', vehicleType: 'van', vehicleFuelType: 'diesel' }, // James Wilson
-  'user-6': { vehicleReg: 'XY34 FGH', vehicleType: 'truck', vehicleFuelType: 'diesel' }, // Sarah Chen
-  'user-7': { vehicleReg: 'CD56 IJK', vehicleType: 'truck', vehicleFuelType: 'diesel' }, // Mike Thompson
-  'user-8': { vehicleReg: 'EF78 LMN', vehicleType: 'truck', vehicleFuelType: 'petrol' }, // Emma Davis
-  'user-9': { vehicleReg: 'GH90 OPQ', vehicleType: 'van', vehicleFuelType: 'electric' }, // David Martinez
-  'user-10': { vehicleReg: 'IJ12 RST', vehicleType: 'van', vehicleFuelType: 'petrol' }, // Lisa Anderson
-};
+import { useDriver } from "@/hooks/useDrivers";
+import type { Driver } from "@/types/jobs";
 
 const timelineSteps: { 
   status: BookingLifecycleStatus; 
@@ -43,63 +33,21 @@ const BookingDetail = () => {
   const { user } = useAuth();
   const { data: booking, isLoading, error } = useBooking(id || null);
   const { data: relatedJob } = useJob(booking?.jobId || null);
-  const [driverDetails, setDriverDetails] = useState<Driver | null>(null);
-
   // Fetch driver details if booking has driverId but no relatedJob driver
-  useEffect(() => {
-    const fetchDriverDetails = async () => {
-      // Only fetch if we have driverId but no relatedJob driver
-      if (booking?.driverId && !relatedJob?.driver) {
-        try {
-          const { mockExtendedUsers } = await import('@/mocks/mock-entities');
-          const user = mockExtendedUsers?.find(u => u.id === booking.driverId);
-          const vehicleInfo = driverVehicleInfo[booking.driverId];
-          
-          if (user && vehicleInfo) {
-            setDriverDetails({
-              id: booking.driverId,
-              name: user.name || booking.driverName || 'Driver Name',
-              vehicleReg: vehicleInfo.vehicleReg,
-              vehicleType: vehicleInfo.vehicleType,
-              vehicleFuelType: vehicleInfo.vehicleFuelType,
-              phone: user.email || '+44 7700 900000',
-            });
-          } else if (booking.driverName) {
-            // Fallback: create minimal driver info from booking data
-            setDriverDetails({
-              id: booking.driverId,
-              name: booking.driverName,
-              vehicleReg: vehicleInfo?.vehicleReg || 'XX00 XXX',
-              vehicleType: vehicleInfo?.vehicleType || 'van',
-              vehicleFuelType: vehicleInfo?.vehicleFuelType || 'diesel',
-              phone: '+44 7700 900000',
-            });
-          }
-        } catch (error) {
-          console.error('Failed to fetch driver details:', error);
-          // Fallback to minimal info
-          if (booking.driverName) {
-            setDriverDetails({
-              id: booking.driverId,
-              name: booking.driverName,
-              vehicleReg: 'XX00 XXX',
-              vehicleType: 'van',
-              vehicleFuelType: 'diesel',
-              phone: '+44 7700 900000',
-            });
-          }
-        }
-      } else {
-        setDriverDetails(null);
-      }
-    };
-
-    if (booking) {
-      fetchDriverDetails();
-    }
-  }, [booking, relatedJob]);
-
-  // Note: Cancellation notes are displayed in the UI
+  const { data: driverDetailsData } = useDriver(
+    booking?.driverId && !relatedJob?.driver ? booking.driverId : null
+  );
+  
+  // Transform driverDetailsData to match the Driver type expected by the component (from jobs.ts)
+  const driverDetails: Driver | null = driverDetailsData ? {
+    id: driverDetailsData.id,
+    name: driverDetailsData.name,
+    vehicleReg: driverDetailsData.vehicleReg,
+    vehicleType: driverDetailsData.vehicleType,
+    vehicleFuelType: driverDetailsData.vehicleFuelType,
+    phone: driverDetailsData.phone || '',
+    // eta is optional and not available from driver service
+  } : null;
 
   if (isLoading) {
     return (
@@ -126,7 +74,6 @@ const BookingDetail = () => {
   const statusLabel = getStatusLabelExtended(booking.status);
   const totalAssets = booking.assets.reduce((sum, a) => sum + a.quantity, 0);
   
-  // Use saved round trip distance from booking (calculated at creation)
   const roundTripDistanceKm = booking.roundTripDistanceKm || 0;
   const roundTripDistanceMiles = booking.roundTripDistanceMiles || 0;
   
@@ -135,18 +82,7 @@ const BookingDetail = () => {
     ? timelineSteps.findIndex(step => step.status === booking.status)
     : -1;
 
-  // Calculate progress line width to end at the center of the current icon
-  // With justify-between, icons are evenly spaced
-  // The line should end at the center of the current icon, not at its edge
-  // Since icons are evenly distributed with justify-between, we interpolate between
-  // the first icon center and last icon center positions
   const totalSteps = timelineSteps.length;
-  
-  // For justify-between layout:
-  // - First icon's left edge is at container's left (0%)
-  // - Last icon's right edge is at container's right (100%)
-  // - Icon centers are evenly spaced between these bounds
-  // Icon is 40px (w-10), so center offset is ~2-3% for typical container widths
   // We use a small offset to account for icon width, then interpolate
   const iconCenterOffset = 2.5; // Approximate offset for icon center (2.5% works for most screen sizes)
   

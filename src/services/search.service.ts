@@ -1,12 +1,7 @@
 // Global Search Service
-import { delay, shouldSimulateError, ApiError, ApiErrorType } from './api-error';
-import { USE_MOCK_API } from '@/lib/config';
 import { apiClient } from './api-client';
-import { mockJobs } from '@/mocks/mock-data';
-import { mockBookings, mockClients } from '@/mocks/mock-entities';
 import type { User } from '@/types/auth';
-
-const SERVICE_NAME = 'search';
+import { transformJobs } from './data-transform';
 
 export interface SearchResult {
   type: 'job' | 'client' | 'booking';
@@ -23,58 +18,21 @@ export interface SearchResponse {
 
 class SearchService {
   async search(query: string, user?: User | null): Promise<SearchResponse> {
-    // Use real API if not using mocks
-    // For now, search is done client-side, so we'll keep using mocks
-    // TODO: Implement backend search endpoint if needed
-    if (!USE_MOCK_API) {
-      // Backend doesn't have a unified search endpoint yet
-      // For now, use mock implementation
-      return this.searchMock(query, user);
-    }
-    
-    return this.searchMock(query, user);
-  }
-
-  private async searchMock(query: string, user?: User | null): Promise<SearchResponse> {
-    await delay(300);
-
-    // Simulate errors
-    if (shouldSimulateError(SERVICE_NAME)) {
-      const config = JSON.parse(localStorage.getItem(`error_sim_${SERVICE_NAME}`) || '{}');
-      throw new ApiError(
-        config.errorType || ApiErrorType.NETWORK_ERROR,
-        'Failed to search. Please try again.',
-        config.errorType === ApiErrorType.NETWORK_ERROR ? 0 : 500
-      );
-    }
-
     if (!query || query.trim().length < 2) {
       return { results: [], total: 0 };
     }
 
-    const lowerQuery = query.toLowerCase().trim();
     const results: SearchResult[] = [];
 
-    // Search Jobs
-    let jobs = [...mockJobs];
-    if (user) {
-      if (user.role === 'client' || user.role === 'reseller') {
-        jobs = jobs.filter(j => j.clientId === user.tenantId);
-      } else if (user.role === 'driver') {
-        jobs = jobs.filter(j => j.driver?.id === user.id && j.status !== 'completed');
-      }
-    }
+    try {
+      // Search Jobs (backend supports searchQuery parameter)
+      const jobsParams = new URLSearchParams();
+      jobsParams.append('searchQuery', query);
+      jobsParams.append('limit', '5');
+      const jobsResponse = await apiClient.get<any[]>(`/jobs?${jobsParams.toString()}`);
+      const jobs = transformJobs(jobsResponse || []);
 
-    jobs
-      .filter(job =>
-        job.clientName.toLowerCase().includes(lowerQuery) ||
-        job.organisationName?.toLowerCase().includes(lowerQuery) ||
-        job.erpJobNumber.toLowerCase().includes(lowerQuery) ||
-        job.siteName.toLowerCase().includes(lowerQuery) ||
-        job.siteAddress.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 5)
-      .forEach(job => {
+      jobs.slice(0, 5).forEach(job => {
         results.push({
           type: 'job',
           id: job.id,
@@ -84,25 +42,14 @@ class SearchService {
         });
       });
 
-    // Search Clients
-    let clients = [...mockClients];
-    if (user) {
-      if (user.role === 'reseller') {
-        clients = clients.filter(c => c.resellerId === user.tenantId);
-      } else if (user.role === 'client') {
-        clients = clients.filter(c => c.tenantId === user.tenantId);
-      }
-    }
+      // Search Clients (backend supports searchQuery parameter)
+      const clientsParams = new URLSearchParams();
+      clientsParams.append('searchQuery', query);
+      clientsParams.append('limit', '5');
+      const clientsResponse = await apiClient.get<any[]>(`/clients?${clientsParams.toString()}`);
+      const clients = clientsResponse?.data || [];
 
-    clients
-      .filter(client =>
-        client.name.toLowerCase().includes(lowerQuery) ||
-        client.organisationName?.toLowerCase().includes(lowerQuery) ||
-        client.email?.toLowerCase().includes(lowerQuery) ||
-        client.contactName?.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 5)
-      .forEach(client => {
+      clients.slice(0, 5).forEach((client: any) => {
         results.push({
           type: 'client',
           id: client.id,
@@ -112,23 +59,14 @@ class SearchService {
         });
       });
 
-    // Search Bookings
-    let bookings = [...mockBookings];
-    if (user) {
-      if (user.role === 'client' || user.role === 'reseller') {
-        bookings = bookings.filter(b => b.clientId === user.tenantId);
-      }
-    }
+      // Search Bookings (backend supports searchQuery parameter)
+      const bookingsParams = new URLSearchParams();
+      bookingsParams.append('searchQuery', query);
+      bookingsParams.append('limit', '5');
+      const bookingsResponse = await apiClient.get<any[]>(`/bookings?${bookingsParams.toString()}`);
+      const bookings = bookingsResponse?.data || [];
 
-    bookings
-      .filter(booking =>
-        booking.clientName.toLowerCase().includes(lowerQuery) ||
-        booking.organisationName?.toLowerCase().includes(lowerQuery) ||
-        booking.bookingNumber.toLowerCase().includes(lowerQuery) ||
-        booking.siteName.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 5)
-      .forEach(booking => {
+      bookings.slice(0, 5).forEach((booking: any) => {
         results.push({
           type: 'booking',
           id: booking.id,
@@ -137,6 +75,11 @@ class SearchService {
           url: `/bookings/${booking.id}`,
         });
       });
+    } catch (error) {
+      console.error('Search error:', error);
+      // Return empty results on error rather than throwing
+      return { results: [], total: 0 };
+    }
 
     return {
       results: results.slice(0, 10), // Limit total results

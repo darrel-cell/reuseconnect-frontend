@@ -1,28 +1,23 @@
-// Additional Mock Entities for Role-Based Features
-// This file contains mock data for: bookings, clients, users
-
 import type { User } from '@/types/auth';
 import type { BookingLifecycleStatus } from '@/types/booking-lifecycle';
 
-// Extended User type for admin user management
 export interface ExtendedUser extends User {
-  isActive: boolean; // Deprecated: use status field instead, but keeping for backwards compatibility
-  status?: 'pending' | 'active' | 'inactive'; // New signups are 'pending', approved users are 'active'
+  isActive: boolean;
+  status?: 'pending' | 'active' | 'inactive';
   lastLogin?: string;
   invitedBy?: string;
 }
 
-// Client entity (for reseller client management)
 export interface Client {
   id: string;
   name: string;
-  organisationName?: string; // Organisation/company name
+  organisationName?: string;
   tenantId: string;
   tenantName: string;
   email: string;
   contactName: string;
   contactPhone: string;
-  resellerId?: string; // If managed by reseller
+  resellerId?: string;
   resellerName?: string;
   status: 'active' | 'inactive' | 'pending';
   createdAt: string;
@@ -31,13 +26,12 @@ export interface Client {
   totalValue: number;
 }
 
-// Booking entity (separate from jobs - represents booking requests)
 export interface Booking {
   id: string;
   bookingNumber: string;
   clientId: string;
   clientName: string;
-  organisationName?: string; // Organisation/company name
+  organisationName?: string;
   resellerId?: string;
   resellerName?: string;
   siteName: string;
@@ -52,25 +46,24 @@ export interface Booking {
   charityPercent: number;
   estimatedCO2e: number;
   estimatedBuyback: number;
-  preferredVehicleType?: 'petrol' | 'diesel' | 'electric'; // Vehicle type selected by client
-  roundTripDistanceKm?: number; // Round trip distance in kilometers (calculated at booking creation)
-  roundTripDistanceMiles?: number; // Round trip distance in miles (calculated at booking creation)
-  jobId?: string; // Linked job if created
-  driverId?: string; // Assigned driver
+  preferredVehicleType?: 'petrol' | 'diesel' | 'electric';
+  roundTripDistanceKm?: number;
+  roundTripDistanceMiles?: number;
+  jobId?: string;
+  driverId?: string;
   driverName?: string;
   createdAt: string;
   createdBy: string;
-  scheduledBy?: string; // Admin who scheduled
+  scheduledBy?: string;
   scheduledAt?: string;
   collectedAt?: string;
   sanitisedAt?: string;
   gradedAt?: string;
   completedAt?: string;
   notes?: string;
-  cancellationNotes?: string; // Notes from admin when cancelling the booking
+  cancellationNotes?: string;
 }
 
-// Sanitisation record
 export interface SanitisationRecord {
   id: string;
   bookingId: string;
@@ -79,14 +72,13 @@ export interface SanitisationRecord {
   method: 'blancco' | 'physical-destruction' | 'degaussing' | 'shredding' | 'other';
   methodDetails?: string;
   timestamp: string;
-  performedBy: string; // Admin/Ops user ID
+  performedBy: string;
   certificateId: string;
   certificateUrl: string;
   verified: boolean;
   notes?: string;
 }
 
-// Grading record
 export interface GradingRecord {
   id: string;
   bookingId: string;
@@ -96,561 +88,7 @@ export interface GradingRecord {
   grade: 'A' | 'B' | 'C' | 'D' | 'Recycled';
   resaleValue: number;
   gradedAt: string;
-  gradedBy: string; // Admin user ID
+  gradedBy: string;
   notes?: string;
-  condition?: string; // Physical condition notes
+  condition?: string;
 }
-
-// Sanitisation record
-export interface SanitisationRecord {
-  id: string;
-  bookingId: string;
-  jobId?: string;
-  assetId: string;
-  method: 'blancco' | 'physical-destruction' | 'degaussing' | 'shredding' | 'other';
-  methodDetails?: string;
-  timestamp: string;
-  performedBy: string; // Admin/Ops user ID
-  certificateId: string;
-  certificateUrl: string;
-  verified: boolean;
-  notes?: string;
-}
-
-// Grading record
-export interface GradingRecord {
-  id: string;
-  bookingId: string;
-  jobId?: string;
-  assetId: string;
-  assetCategory: string;
-  grade: 'A' | 'B' | 'C' | 'D' | 'Recycled';
-  resaleValue: number;
-  gradedAt: string;
-  gradedBy: string; // Admin user ID
-  notes?: string;
-  condition?: string; // Physical condition notes
-}
-
-// Mock Users (extended for admin management)
-export const mockExtendedUsers: ExtendedUser[] = [
-  {
-    id: 'user-1',
-    email: 'admin@reuse.com',
-    name: 'Admin User',
-    role: 'admin',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-01-01',
-    isActive: true,
-    lastLogin: '2024-12-17T10:30:00Z',
-  },
-  {
-    id: 'user-2',
-    email: 'client@techcorp.com',
-    name: 'Client User',
-    role: 'client',
-    tenantId: 'tenant-2',
-    tenantName: 'TechCorp Industries',
-    createdAt: '2024-01-15',
-    isActive: true,
-    lastLogin: '2024-12-17T09:15:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-3',
-    email: 'reseller@partner.com',
-    name: 'Reseller User',
-    role: 'reseller',
-    tenantId: 'tenant-3',
-    tenantName: 'Partner Solutions',
-    createdAt: '2024-02-01',
-    isActive: true,
-    lastLogin: '2024-12-17T08:45:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-4',
-    email: 'driver@reuse.com',
-    name: 'James Wilson',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-03-01',
-    isActive: true,
-    lastLogin: '2024-12-17T07:20:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-5',
-    email: 'client2@techcorp.com',
-    name: 'TechCorp Manager',
-    role: 'client',
-    tenantId: 'tenant-2',
-    tenantName: 'TechCorp Industries',
-    createdAt: '2024-04-01',
-    isActive: true,
-    lastLogin: '2024-12-16T16:30:00Z',
-    invitedBy: 'user-2',
-  },
-  {
-    id: 'user-6',
-    email: 'driver2@reuse.com',
-    name: 'Sarah Chen',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-05-01',
-    isActive: true,
-    lastLogin: '2024-12-17T06:00:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-7',
-    email: 'driver3@reuse.com',
-    name: 'Mike Thompson',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-06-01',
-    isActive: true,
-    lastLogin: '2024-12-17T05:30:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-8',
-    email: 'driver4@reuse.com',
-    name: 'Emma Davis',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-07-01',
-    isActive: true,
-    lastLogin: '2024-12-16T18:00:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-9',
-    email: 'driver5@reuse.com',
-    name: 'David Martinez',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-08-01',
-    isActive: true,
-    lastLogin: '2024-12-17T08:00:00Z',
-    invitedBy: 'user-1',
-  },
-  {
-    id: 'user-10',
-    email: 'driver6@reuse.com',
-    name: 'Lisa Anderson',
-    role: 'driver',
-    tenantId: 'tenant-1',
-    tenantName: 'Reuse Connect ITAD Platform',
-    createdAt: '2024-09-01',
-    isActive: true,
-    lastLogin: '2024-12-17T07:45:00Z',
-    invitedBy: 'user-1',
-  },
-];
-
-// Mock Clients (for reseller and admin management)
-export const mockClients: Client[] = [
-  {
-    id: 'client-1',
-    name: 'TechCorp Industries',
-    organisationName: 'TechCorp Industries',
-    tenantId: 'tenant-2',
-    tenantName: 'TechCorp Industries',
-    email: 'contact@techcorp.com',
-    contactName: 'Client User',
-    contactPhone: '+44 20 1234 5678',
-    status: 'active',
-    createdAt: '2024-01-15',
-    totalBookings: 12,
-    totalJobs: 8,
-    totalValue: 45000,
-  },
-  {
-    id: 'client-2',
-    name: 'Green Finance Ltd',
-    organisationName: 'Green Finance Ltd',
-    tenantId: 'tenant-4',
-    tenantName: 'Green Finance Ltd',
-    email: 'contact@greenfinance.com',
-    contactName: 'Finance Manager',
-    contactPhone: '+44 20 2345 6789',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-03-01',
-    totalBookings: 5,
-    totalJobs: 3,
-    totalValue: 12000,
-  },
-  {
-    id: 'client-3',
-    name: 'HealthFirst NHS Trust',
-    organisationName: 'HealthFirst NHS Trust',
-    tenantId: 'tenant-5',
-    tenantName: 'HealthFirst NHS Trust',
-    email: 'contact@healthfirst.nhs.uk',
-    contactName: 'IT Manager',
-    contactPhone: '+44 20 3456 7890',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-04-01',
-    totalBookings: 8,
-    totalJobs: 6,
-    totalValue: 28000,
-  },
-  {
-    id: 'client-4',
-    name: 'EduTech University',
-    organisationName: 'EduTech University',
-    tenantId: 'tenant-6',
-    tenantName: 'EduTech University',
-    email: 'contact@edutech.ac.uk',
-    contactName: 'Procurement Officer',
-    contactPhone: '+44 20 4567 8901',
-    status: 'pending',
-    createdAt: '2024-12-01',
-    totalBookings: 0,
-    totalJobs: 0,
-    totalValue: 0,
-  },
-  {
-    id: 'client-5',
-    name: 'RetailMax Corporation',
-    organisationName: 'RetailMax Corporation',
-    tenantId: 'tenant-7',
-    tenantName: 'RetailMax Corporation',
-    email: 'contact@retailmax.com',
-    contactName: 'Operations Director',
-    contactPhone: '+44 20 5678 9012',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-05-15',
-    totalBookings: 15,
-    totalJobs: 12,
-    totalValue: 52000,
-  },
-  {
-    id: 'client-6',
-    name: 'Legal Services Group',
-    organisationName: 'Legal Services Group',
-    tenantId: 'tenant-8',
-    tenantName: 'Legal Services Group',
-    email: 'contact@legalservices.co.uk',
-    contactName: 'IT Director',
-    contactPhone: '+44 20 6789 0123',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-06-01',
-    totalBookings: 9,
-    totalJobs: 7,
-    totalValue: 18500,
-  },
-  {
-    id: 'client-7',
-    name: 'Manufacturing Solutions Ltd',
-    organisationName: 'Manufacturing Solutions Ltd',
-    tenantId: 'tenant-9',
-    tenantName: 'Manufacturing Solutions Ltd',
-    email: 'contact@manufacturing-solutions.com',
-    contactName: 'Facilities Manager',
-    contactPhone: '+44 20 7890 1234',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-07-10',
-    totalBookings: 11,
-    totalJobs: 9,
-    totalValue: 32000,
-  },
-  {
-    id: 'client-8',
-    name: 'City Council Authority',
-    organisationName: 'City Council Authority',
-    tenantId: 'tenant-10',
-    tenantName: 'City Council Authority',
-    email: 'contact@citycouncil.gov.uk',
-    contactName: 'Sustainability Officer',
-    contactPhone: '+44 20 8901 2345',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-08-05',
-    totalBookings: 18,
-    totalJobs: 14,
-    totalValue: 68000,
-  },
-  {
-    id: 'client-9',
-    name: 'Media Production House',
-    organisationName: 'Media Production House',
-    tenantId: 'tenant-11',
-    tenantName: 'Media Production House',
-    email: 'contact@mediaprod.com',
-    contactName: 'Technical Manager',
-    contactPhone: '+44 20 9012 3456',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-09-20',
-    totalBookings: 6,
-    totalJobs: 5,
-    totalValue: 14500,
-  },
-  {
-    id: 'client-10',
-    name: 'Financial Services Inc',
-    organisationName: 'Financial Services Inc',
-    tenantId: 'tenant-12',
-    tenantName: 'Financial Services Inc',
-    email: 'contact@financialservices.com',
-    contactName: 'Compliance Manager',
-    contactPhone: '+44 20 0123 4567',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-10-15',
-    totalBookings: 13,
-    totalJobs: 10,
-    totalValue: 41000,
-  },
-  {
-    id: 'client-11',
-    name: 'Healthcare Network',
-    organisationName: 'Healthcare Network',
-    tenantId: 'tenant-13',
-    tenantName: 'Healthcare Network',
-    email: 'contact@healthcarenetwork.org',
-    contactName: 'IT Coordinator',
-    contactPhone: '+44 20 1234 5679',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-11-01',
-    totalBookings: 7,
-    totalJobs: 6,
-    totalValue: 22000,
-  },
-  {
-    id: 'client-12',
-    name: 'TechStart Innovations',
-    organisationName: 'TechStart Innovations',
-    tenantId: 'tenant-14',
-    tenantName: 'TechStart Innovations',
-    email: 'contact@techstart.io',
-    contactName: 'Founder',
-    contactPhone: '+44 20 2345 6780',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    status: 'active',
-    createdAt: '2024-11-20',
-    totalBookings: 4,
-    totalJobs: 3,
-    totalValue: 8500,
-  },
-];
-
-// Mock Bookings (booking requests, separate from jobs)
-export const mockBookings: Booking[] = [
-  {
-    id: 'booking-001',
-    bookingNumber: 'BK-2024-001',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    siteName: 'London HQ',
-    siteAddress: '123 Tech Street, London EC1A 1BB',
-    scheduledDate: '2024-12-20',
-    status: 'scheduled',
-    driverId: 'user-4',
-    driverName: 'James Wilson',
-    scheduledBy: 'user-1',
-    scheduledAt: '2024-12-15T10:00:00Z',
-    assets: [
-      { categoryId: 'laptop', categoryName: 'Laptops', quantity: 30 },
-      { categoryId: 'monitor', categoryName: 'Monitors', quantity: 20 },
-    ],
-    charityPercent: 10,
-    estimatedCO2e: 18000,
-    estimatedBuyback: 3500,
-    preferredVehicleType: 'diesel',
-    roundTripDistanceKm: 45.2,
-    roundTripDistanceMiles: 28.1,
-    createdAt: '2024-11-15',
-    createdBy: 'user-2',
-  },
-  {
-    id: 'booking-002',
-    bookingNumber: 'BK-2024-002',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    siteName: 'Manchester Office',
-    siteAddress: '456 Business Park, Manchester M1 2AB',
-    scheduledDate: '2024-12-22',
-    status: 'created',
-    assets: [
-      { categoryId: 'desktop', categoryName: 'Desktops', quantity: 15 },
-      { categoryId: 'printer', categoryName: 'Printers', quantity: 5 },
-    ],
-    charityPercent: 5,
-    estimatedCO2e: 8500,
-    estimatedBuyback: 900,
-    preferredVehicleType: 'electric',
-    roundTripDistanceKm: 380.4,
-    roundTripDistanceMiles: 236.4,
-    createdAt: '2024-12-10',
-    createdBy: 'user-2',
-  },
-  {
-    id: 'booking-003',
-    bookingNumber: 'BK-2024-003',
-    clientId: 'tenant-4',
-    clientName: 'Green Finance Ltd',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    siteName: 'Leeds Branch',
-    siteAddress: '100 Finance Road, Leeds LS1 1FG',
-    scheduledDate: '2024-12-25',
-    status: 'collected',
-    driverId: 'user-4',
-    driverName: 'James Wilson',
-    scheduledBy: 'user-1',
-    scheduledAt: '2024-12-20T09:00:00Z',
-    collectedAt: '2024-12-25T14:30:00Z',
-    assets: [
-      { categoryId: 'laptop', categoryName: 'Laptops', quantity: 25 },
-      { categoryId: 'phone', categoryName: 'Mobile Phones', quantity: 40 },
-    ],
-    charityPercent: 0,
-    estimatedCO2e: 12000,
-    estimatedBuyback: 2500,
-    preferredVehicleType: 'petrol',
-    roundTripDistanceKm: 360.8,
-    roundTripDistanceMiles: 224.1,
-    createdAt: '2024-12-05',
-    createdBy: 'user-3',
-    notes: 'Created on behalf of client',
-  },
-  {
-    id: 'booking-004',
-    bookingNumber: 'BK-2024-004',
-    clientId: 'tenant-5',
-    clientName: 'HealthFirst NHS Trust',
-    resellerId: 'tenant-3',
-    resellerName: 'Partner Solutions',
-    siteName: 'Manchester Clinic',
-    siteAddress: '200 Health Lane, Manchester M1 2GH',
-    scheduledDate: '2024-12-28',
-    status: 'created',
-    assets: [
-      { categoryId: 'tablet', categoryName: 'Tablets', quantity: 50 },
-      { categoryId: 'server', categoryName: 'Servers', quantity: 3 },
-    ],
-    charityPercent: 15,
-    estimatedCO2e: 15000,
-    estimatedBuyback: 1200,
-    preferredVehicleType: 'electric',
-    roundTripDistanceKm: 380.4,
-    roundTripDistanceMiles: 236.4,
-    createdAt: '2024-12-12',
-    createdBy: 'user-3',
-  },
-  {
-    id: 'booking-005',
-    bookingNumber: 'BK-2024-005',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    siteName: 'Birmingham Office',
-    siteAddress: '45 Tech Park, Birmingham B1 1CD',
-    scheduledDate: '2024-12-10',
-    status: 'sanitised',
-    driverId: 'user-4',
-    driverName: 'James Wilson',
-    scheduledBy: 'user-1',
-    scheduledAt: '2024-12-05T08:00:00Z',
-    collectedAt: '2024-12-10T11:00:00Z',
-    sanitisedAt: '2024-12-11T15:00:00Z',
-    assets: [
-      { categoryId: 'laptop', categoryName: 'Laptops', quantity: 25 },
-      { categoryId: 'monitor', categoryName: 'Monitors', quantity: 15 },
-    ],
-    charityPercent: 5,
-    estimatedCO2e: 12000,
-    estimatedBuyback: 2500,
-    preferredVehicleType: 'diesel',
-    roundTripDistanceKm: 320.6,
-    roundTripDistanceMiles: 199.1,
-    createdAt: '2024-12-01',
-    createdBy: 'user-2',
-  },
-  {
-    id: 'booking-006',
-    bookingNumber: 'BK-2024-006',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    siteName: 'Leeds Branch',
-    siteAddress: '100 Finance Road, Leeds LS1 1FG',
-    scheduledDate: '2024-12-05',
-    status: 'graded',
-    driverId: 'user-4',
-    driverName: 'James Wilson',
-    scheduledBy: 'user-1',
-    scheduledAt: '2024-12-01T09:00:00Z',
-    collectedAt: '2024-12-05T13:00:00Z',
-    sanitisedAt: '2024-12-06T10:00:00Z',
-    gradedAt: '2024-12-07T14:00:00Z',
-    assets: [
-      { categoryId: 'desktop', categoryName: 'Desktops', quantity: 20 },
-      { categoryId: 'printer', categoryName: 'Printers', quantity: 8 },
-    ],
-    charityPercent: 10,
-    estimatedCO2e: 10440,
-    estimatedBuyback: 1200,
-    preferredVehicleType: 'petrol',
-    roundTripDistanceKm: 360.8,
-    roundTripDistanceMiles: 224.1,
-    createdAt: '2024-11-25',
-    createdBy: 'user-2',
-  },
-  {
-    id: 'booking-007',
-    bookingNumber: 'BK-2024-007',
-    clientId: 'tenant-2',
-    clientName: 'TechCorp Industries',
-    siteName: 'London HQ',
-    siteAddress: '123 Tech Street, London EC1A 1BB',
-    scheduledDate: '2024-11-28',
-    status: 'completed',
-    jobId: 'job-001',
-    driverId: 'user-4',
-    driverName: 'James Wilson',
-    scheduledBy: 'user-1',
-    scheduledAt: '2024-11-20T10:00:00Z',
-    collectedAt: '2024-11-28T12:00:00Z',
-    sanitisedAt: '2024-11-29T09:00:00Z',
-    gradedAt: '2024-11-30T11:00:00Z',
-    completedAt: '2024-12-01T16:00:00Z',
-    assets: [
-      { categoryId: 'laptop', categoryName: 'Laptops', quantity: 45 },
-      { categoryId: 'monitor', categoryName: 'Monitors', quantity: 30 },
-      { categoryId: 'phone', categoryName: 'Mobile Phones', quantity: 25 },
-    ],
-    charityPercent: 10,
-    estimatedCO2e: 26150,
-    estimatedBuyback: 5875,
-    preferredVehicleType: 'diesel',
-    roundTripDistanceKm: 45.2,
-    roundTripDistanceMiles: 28.1,
-    createdAt: '2024-11-15',
-    createdBy: 'user-2',
-  },
-];
-

@@ -64,8 +64,6 @@ const Booking = () => {
   const [selectedClientId, setSelectedClientId] = useState<string>(""); // For resellers: selected client
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [siteLocation, setSiteLocation] = useState<{ lat: number; lng: number } | null>(null);
-  // Legacy state kept so existing logic (e.g. map auto-fill conditions) continues to work,
-  // but sites are no longer loaded from the API.
   const [selectedSiteId] = useState<string>("new");
   const [siteDetails, setSiteDetails] = useState({
     siteName: "",
@@ -188,7 +186,6 @@ const Booking = () => {
 
   const totalAssets = selectedAssets.reduce((sum, a) => sum + a.quantity, 0);
   
-  // Get buyback estimate from backend API
   const buybackEstimate = buybackCalculation?.estimatedBuyback ?? 0;
 
   // Use CO2 calculation from service (useCO2Calculation hook)
@@ -204,13 +201,9 @@ const Booking = () => {
     electric: 0,
   };
 
-  // Calculate estimated cost of collection and processing
   // TODO: Replace with actual calculation formula when provided by client
-  // This is a placeholder calculation based on distance and asset count
   const calculateEstimatedCost = (): number => {
     if (distanceKm === 0 || totalAssets === 0) return 0;
-    
-    // Placeholder calculation:
     // Base cost + distance-based cost + processing cost per asset
     const baseCost = 50; // Base collection fee
     const distanceCost = distanceKm * 0.5; // £0.50 per km (round trip)
@@ -227,8 +220,6 @@ const Booking = () => {
       return false;
     }
     if (currentStep === 1) {
-      // For resellers and admin, require client selection only if clients are available
-      // If no clients exist, allow proceeding (backend will create client)
       if ((isReseller || isAdmin) && !selectedClientId && clients.length > 0) {
         return false;
       }
@@ -252,8 +243,6 @@ const Booking = () => {
         return false;
       }
       
-      // Check step 1 requirements
-      // For resellers and admin, require client selection only if clients are available
       if ((isReseller || isAdmin) && !selectedClientId && clients.length > 0) {
         return false;
       }
@@ -264,7 +253,6 @@ const Booking = () => {
         siteDetails.postcode?.trim() &&
         scheduledDate !== undefined
       );
-      // Check step 2 requirements
       const hasStep2Fields = totalAssets > 0;
       return hasStep1Fields && hasStep2Fields;
     }
@@ -360,7 +348,6 @@ const Booking = () => {
     );
   };
 
-  // Check if booking is blocked due to no clients
   const isBlocked = (isReseller || isAdmin) && !isLoadingClients && clients.length === 0 && !clientsError;
 
   return (
@@ -625,7 +612,6 @@ const Booking = () => {
                   <MapPicker
                     position={siteLocation}
                     onPositionChange={(position) => {
-                      // Allow position change always (don't check for existing address)
                       setSiteLocation(position);
                     }}
                     onAddressDetailsChange={(details) => {

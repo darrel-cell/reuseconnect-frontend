@@ -1,6 +1,6 @@
 // Documents Service
 import { apiClient } from './api-client';
-import { USE_MOCK_API, API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL } from '@/lib/config';
 
 export interface Document {
   id: string;
@@ -30,13 +30,6 @@ export interface Document {
 
 class DocumentsService {
   async getDocuments(): Promise<Document[]> {
-    if (!USE_MOCK_API) {
-      return this.getDocumentsAPI();
-    }
-    return this.getDocumentsMock();
-  }
-
-  private async getDocumentsAPI(): Promise<Document[]> {
     try {
       const documents = await apiClient.get<Document[]>('/documents');
       // Ensure we always return an array, never undefined
@@ -52,15 +45,7 @@ class DocumentsService {
     }
   }
 
-  private async getDocumentsMock(): Promise<Document[]> {
-    // Return empty array for mock - documents will come from API
-    return [];
-  }
-
   getDownloadUrl(documentId: string): string {
-    if (USE_MOCK_API) {
-      return '#';
-    }
     return `${API_BASE_URL}/documents/${documentId}/download`;
   }
 
@@ -68,9 +53,6 @@ class DocumentsService {
    * Download a document file with authentication
    */
   async downloadDocument(documentId: string, fileName?: string): Promise<void> {
-    if (USE_MOCK_API) {
-      return;
-    }
 
     try {
       const token = localStorage.getItem('auth_token');

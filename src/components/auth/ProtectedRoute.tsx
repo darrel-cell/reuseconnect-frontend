@@ -44,8 +44,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // 2. Driver profile is loading (and user is driver, not on settings page)
   // 3. Client profile is loading (and user is client, not on settings page)
   // 4. Reseller profile is loading (and user is reseller, not on settings page)
-  // Note: For admins, none of these conditions should be true, so page loads immediately
-  // IMPORTANT: Only consider isLoadingResellerProfile if user is actually a reseller
   const isProfileLoading = 
     (isDriver && isLoadingDriverProfile && !isSettingsPage) || 
     (isClient && isLoadingClientProfile && !isSettingsPage) ||
