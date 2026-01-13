@@ -16,11 +16,13 @@ export const WAREHOUSE_COORDINATES = {
 
 /**
  * Geocode a postcode to get coordinates (using OpenStreetMap Nominatim)
+ * Supports all European countries
  */
 export async function geocodePostcode(postcode: string): Promise<{ lat: number; lng: number } | null> {
   try {
+    // Remove country restriction to support all European countries
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1&countrycodes=gb`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1`
     );
     const data = await response.json();
     if (data.length > 0) {
@@ -52,8 +54,9 @@ export async function geocodeAddressWithDetails(
   } | null;
 }> {
   try {
+    // Remove country restriction to support all European countries
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=gb&addressdetails=1&extratags=1&namedetails=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&extratags=1&namedetails=1`
     );
     const data = await response.json();
     
@@ -141,14 +144,28 @@ export async function geocodeAddressWithDetails(
           street = result.address.neighbourhood;
         }
 
-        // Extract city
-        const city = result.address.city || 
-                    result.address.town || 
-                    result.address.village || 
-                    result.address.suburb ||
-                    result.address.locality ||
-                    result.address.neighbourhood ||
-                    "";
+        // Extract city - prioritize actual city/town/village, avoid using road names
+        // Don't use suburb/neighbourhood if they might be road names
+        let city = result.address.city || 
+                   result.address.town || 
+                   result.address.village || 
+                   result.address.locality ||
+                   "";
+        
+        // Only use suburb/neighbourhood as fallback if they don't match the road name
+        // This prevents road names from being used as city names
+        if (!city) {
+          const suburb = result.address.suburb || "";
+          const neighbourhood = result.address.neighbourhood || "";
+          const road = result.address.road || "";
+          
+          // Use suburb only if it doesn't match the road name
+          if (suburb && suburb.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(suburb.toLowerCase())) {
+            city = suburb;
+          } else if (neighbourhood && neighbourhood.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(neighbourhood.toLowerCase())) {
+            city = neighbourhood;
+          }
+        }
 
         // Extract county
         const county = result.address.county || 
@@ -158,15 +175,32 @@ export async function geocodeAddressWithDetails(
         // Extract postcode
         let postcode = result.address.postcode || "";
         if (!postcode && result.display_name) {
-          // Try to extract from display_name if missing
-          const postcodeMatch = result.display_name.match(/\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i);
+          // Try to extract from display_name if missing - use European patterns
+          // Try UK pattern first (most specific), then common European patterns
+          const ukPattern = /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i;
+          const commonPatterns = [
+            /\b\d{5}\b/, // 5 digits (DE, FR, IT, ES, FI, GR, HR, EE, UA, TR, etc.)
+            /\b\d{4}\s?[A-Z]{2}\b/i, // NL format: 1234 AB
+            /\b\d{4}\b/, // 4 digits (BE, AT, CH, DK, etc.)
+            /\b\d{3}\s?\d{2}\b/, // SE, CZ, SK format: 123 45
+            /\b[A-Z]\d{1,2}\s?[A-Z0-9]{4}\b/i, // IE format: D02 AF30
+          ];
+          
+          let postcodeMatch = result.display_name.match(ukPattern);
+          if (!postcodeMatch) {
+            for (const pattern of commonPatterns) {
+              postcodeMatch = result.display_name.match(pattern);
+              if (postcodeMatch) break;
+            }
+          }
+          
           if (postcodeMatch) {
             postcode = postcodeMatch[0].replace(/\s+/g, ' ').trim().toUpperCase();
           }
         }
 
-        // Extract country
-        const country = result.address.country || "United Kingdom";
+        // Extract country - no default, use what Nominatim returns
+        const country = result.address.country || "";
 
         address = {
           street: street || undefined,

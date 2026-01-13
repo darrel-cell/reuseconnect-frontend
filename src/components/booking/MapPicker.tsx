@@ -162,14 +162,28 @@ function MapClickHandler({
               street = data.address.neighbourhood;
             }
 
-            // Extract city - try multiple sources with better fallbacks
-            const city = data.address.city || 
-                        data.address.town || 
-                        data.address.village || 
-                        data.address.suburb ||
-                        data.address.locality ||
-                        data.address.neighbourhood ||
-                        "";
+            // Extract city - prioritize actual city/town/village, avoid using road names
+            // Don't use suburb/neighbourhood if they might be road names
+            let city = data.address.city || 
+                       data.address.town || 
+                       data.address.village || 
+                       data.address.locality ||
+                       "";
+            
+            // Only use suburb/neighbourhood as fallback if they don't match the road name
+            // This prevents road names from being used as city names
+            if (!city) {
+              const suburb = data.address.suburb || "";
+              const neighbourhood = data.address.neighbourhood || "";
+              const road = data.address.road || "";
+              
+              // Use suburb only if it doesn't match the road name
+              if (suburb && suburb.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(suburb.toLowerCase())) {
+                city = suburb;
+              } else if (neighbourhood && neighbourhood.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(neighbourhood.toLowerCase())) {
+                city = neighbourhood;
+              }
+            }
 
             // Extract county
             const county = data.address.county || 
@@ -179,17 +193,33 @@ function MapClickHandler({
             // Extract postcode - critical for delivery
             let postcode = data.address.postcode || "";
             
-            // If postcode is missing, try to extract from display_name
+            // If postcode is missing, try to extract from display_name using European patterns
             if (!postcode && data.display_name) {
-              // UK postcode pattern: 1-2 letters, 1-2 digits, optional letter, space, digit, 2 letters
-              const postcodeMatch = data.display_name.match(/\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i);
+              // Try UK pattern first (most specific), then common European patterns
+              const ukPattern = /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i;
+              const commonPatterns = [
+                /\b\d{5}\b/, // 5 digits (DE, FR, IT, ES, FI, GR, HR, EE, UA, TR, etc.)
+                /\b\d{4}\s?[A-Z]{2}\b/i, // NL format: 1234 AB
+                /\b\d{4}\b/, // 4 digits (BE, AT, CH, DK, etc.)
+                /\b\d{3}\s?\d{2}\b/, // SE, CZ, SK format: 123 45
+                /\b[A-Z]\d{1,2}\s?[A-Z0-9]{4}\b/i, // IE format: D02 AF30
+              ];
+              
+              let postcodeMatch = data.display_name.match(ukPattern);
+              if (!postcodeMatch) {
+                for (const pattern of commonPatterns) {
+                  postcodeMatch = data.display_name.match(pattern);
+                  if (postcodeMatch) break;
+                }
+              }
+              
               if (postcodeMatch) {
                 postcode = postcodeMatch[0].replace(/\s+/g, ' ').trim().toUpperCase();
               }
             }
 
-            // Extract country with fallback
-            const country = data.address.country || "United Kingdom";
+            // Extract country - no default, use what Nominatim returns
+            const country = data.address.country || "";
 
             onAddressDetailsChange({
               street: street,
@@ -370,7 +400,7 @@ export function MapPicker({
         {showSuggestions && suggestions.length > 0 && (
           <div 
             ref={suggestionsRef}
-            className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto"
+            className="absolute z-[2000] w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto"
           >
             {suggestions.map((suggestion, index) => (
               <div

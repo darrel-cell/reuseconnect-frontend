@@ -33,6 +33,12 @@ import { useClients } from "@/hooks/useClients";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { geocodePostcode } from "@/lib/calculations";
+import { 
+  validateEuropeanPostcode, 
+  isValidEuropeanCountry, 
+  normalizeEuropeanCountry,
+  extractEuropeanPostcode 
+} from "@/lib/european-validation";
 import type { CreateSiteRequest, UpdateSiteRequest } from "@/services/site.service";
 
 const Sites = () => {
@@ -56,7 +62,7 @@ const Sites = () => {
     street: "",
     city: "",
     county: "",
-    country: "United Kingdom",
+    country: "",
     postcode: "",
     contactName: "",
     contactPhone: "",
@@ -107,7 +113,7 @@ const Sites = () => {
         street: "",
         city: "",
         county: "",
-        country: "United Kingdom",
+        country: "",
         postcode: "",
         contactName: "",
         contactPhone: "",
@@ -126,32 +132,27 @@ const Sites = () => {
     // Format can be: "street, city, county, country" OR "street, city, country" (if county was empty)
     const addressParts = site.address.split(',').map((s: string) => s.trim());
     
-    // Smart parsing: if last part is "United Kingdom" or a known country, it's the country
-    // Otherwise, assume 4-part format: street, city, county, country
-    const knownCountries = ['United Kingdom', 'UK', 'England', 'Scotland', 'Wales', 'Northern Ireland'];
+    // Smart parsing: check if any part is a known European country
     const lastPart = addressParts[addressParts.length - 1] || "";
-    const isCountryInLastPart = knownCountries.some(country => 
-      lastPart.toLowerCase().includes(country.toLowerCase()) || 
-      country.toLowerCase().includes(lastPart.toLowerCase())
-    );
+    const isCountryInLastPart = isValidEuropeanCountry(lastPart);
     
     let street = "";
     let city = "";
     let county = "";
-    let country = "United Kingdom";
+    let country = "";
     
     if (addressParts.length === 3 && isCountryInLastPart) {
       // Format: "street, city, country" (county was empty)
       street = addressParts[0] || "";
       city = addressParts[1] || "";
       county = ""; // County was empty
-      country = addressParts[2] || "United Kingdom";
+      country = addressParts[2] || "";
     } else if (addressParts.length === 4) {
       // Format: "street, city, county, country"
       street = addressParts[0] || "";
       city = addressParts[1] || "";
       county = addressParts[2] || "";
-      country = addressParts[3] || "United Kingdom";
+      country = addressParts[3] || "";
     } else if (addressParts.length >= 2) {
       // Fallback: try to parse intelligently
       street = addressParts[0] || "";
@@ -193,16 +194,14 @@ const Sites = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  // UK Postcode validation regex
-  const validateUKPostcode = (postcode: string): boolean => {
-    // UK postcode format: A9 9AA, A99 9AA, AA9 9AA, AA99 9AA, A9A 9AA, AA9A 9AA
-    const postcodeRegex = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
-    return postcodeRegex.test(postcode.trim());
+  // Use European postcode validation
+  const validatePostcode = (postcode: string, country?: string): boolean => {
+    return validateEuropeanPostcode(postcode, country);
   };
 
   // Auto-verify when postcode or address fields change
   useEffect(() => {
-    if (!formData.postcode.trim() || !validateUKPostcode(formData.postcode)) {
+    if (!formData.postcode.trim() || !validatePostcode(formData.postcode, formData.country)) {
       setIsValid(false);
       setValidationError(null);
       return;
@@ -225,7 +224,7 @@ const Sites = () => {
   }, [formData.postcode, formData.street, formData.city, formData.county, formData.country]);
 
   const verifyAddressFields = async () => {
-    if (!formData.postcode.trim() || !validateUKPostcode(formData.postcode)) {
+    if (!formData.postcode.trim() || !validatePostcode(formData.postcode, formData.country)) {
       setIsValid(false);
       setValidationError(null);
       return;
@@ -286,14 +285,14 @@ const Sites = () => {
 
   // Verify postcode matches all address fields by geocoding
   const verifyPostcodeMatch = async (postcode: string, street: string, city: string, county: string, country: string) => {
-    if (!postcode.trim() || !validateUKPostcode(postcode)) {
+    if (!postcode.trim() || !validatePostcode(postcode, country)) {
       return { match: true };
     }
 
     try {
-      // Geocode postcode to get actual address details
+      // Geocode postcode to get actual address details - removed country restriction for European support
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1&addressdetails=1&countrycodes=gb`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1&addressdetails=1`
       );
       const data = await response.json();
       
@@ -317,40 +316,15 @@ const Sites = () => {
       const countyMismatch = enteredCounty && geocodedCounty && !geocodedCounty.includes(enteredCounty) && !enteredCounty.includes(geocodedCounty);
       
       // Country verification: check if entered country matches geocoded country
-      // Normalize country names to handle common variations
-      const normalizeCountry = (c: string): string => {
-        const normalized = c.toLowerCase().trim();
-        // Handle UK variations - must be complete words/phrases, not partial matches
-        if (normalized === 'united kingdom' || normalized === 'uk' || normalized === 'great britain' || normalized === 'britain' || normalized === 'england' || normalized === 'scotland' || normalized === 'wales') {
-          return 'united kingdom';
-        }
-        // Check if it's a valid UK country name (full match, not partial)
-        const ukVariations = ['united kingdom', 'uk', 'great britain', 'britain'];
-        for (const variation of ukVariations) {
-          if (normalized === variation || normalized === `the ${variation}`) {
-            return 'united kingdom';
-          }
-        }
-        return normalized;
-      };
+      // Use European country normalization
+      const normalizedEnteredCountry = normalizeEuropeanCountry(enteredCountry);
+      const normalizedGeocodedCountry = normalizeEuropeanCountry(geocodedCountry);
       
-      const normalizedEnteredCountry = normalizeCountry(enteredCountry);
-      const normalizedGeocodedCountry = normalizeCountry(geocodedCountry);
-      
-      // Country mismatch: must be exact match after normalization, or clearly different countries
-      // Reject partial matches like "U" or "United" - they must be full valid country names
-      const isValidUKCountry = (country: string): boolean => {
-        const normalized = country.toLowerCase().trim();
-        const validUKNames = ['united kingdom', 'uk', 'great britain', 'britain', 'england', 'scotland', 'wales', 'northern ireland'];
-        return validUKNames.some(name => normalized === name || normalized === `the ${name}`);
-      };
-      
-      // If entered country is not a valid/complete UK country name, it's a mismatch
+      // Country mismatch: must be exact match after normalization
+      // Reject if entered country is not a valid European country or doesn't match geocoded country
       const countryMismatch = enteredCountry && geocodedCountry && (
-        !isValidUKCountry(enteredCountry) || // Entered country is not a valid complete name
-        (normalizedEnteredCountry !== normalizedGeocodedCountry && 
-         !normalizedGeocodedCountry.includes(normalizedEnteredCountry) && 
-         !normalizedEnteredCountry.includes(normalizedGeocodedCountry))
+        !normalizedEnteredCountry || // Entered country is not a valid European country
+        (normalizedEnteredCountry !== normalizedGeocodedCountry && normalizedGeocodedCountry) // Mismatch when both are valid
       );
       // Street is harder to verify exactly, so we'll be lenient - only check if street name is clearly wrong
       const streetMismatch = enteredStreet && geocodedStreet && 
@@ -402,8 +376,8 @@ const Sites = () => {
     }
 
     // Validate postcode format
-    if (!validateUKPostcode(formData.postcode)) {
-      toast.error("Please enter a valid UK postcode (e.g., M1 1AA, SW1A 1AA)");
+    if (!validatePostcode(formData.postcode, formData.country)) {
+      toast.error("Please enter a valid postcode for the selected country");
       return;
     }
 
@@ -466,7 +440,7 @@ const Sites = () => {
         street: "",
         city: "",
         county: "",
-        country: "United Kingdom",
+        country: "",
         postcode: "",
         contactName: "",
         contactPhone: "",
@@ -491,8 +465,8 @@ const Sites = () => {
     }
 
     // Validate postcode format
-    if (!validateUKPostcode(formData.postcode)) {
-      toast.error("Please enter a valid UK postcode (e.g., M1 1AA, SW1A 1AA)");
+    if (!validatePostcode(formData.postcode, formData.country)) {
+      toast.error("Please enter a valid postcode for the selected country");
       return;
     }
 
@@ -807,7 +781,7 @@ const Sites = () => {
                       onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
                       required
                       className={cn(
-                        formData.postcode && !validateUKPostcode(formData.postcode) && "border-warning",
+                        formData.postcode && !validatePostcode(formData.postcode, formData.country) && "border-warning",
                         validationError && "border-destructive",
                         isValid && "border-success"
                       )}
@@ -818,7 +792,7 @@ const Sites = () => {
                         Verifying address...
                       </p>
                     )}
-                    {formData.postcode && !validateUKPostcode(formData.postcode) && !isVerifying && (
+                    {formData.postcode && !validatePostcode(formData.postcode, formData.country) && !isVerifying && (
                       <p className="text-xs text-warning">
                         ⚠️ Postcode format may be incorrect
                       </p>
@@ -840,7 +814,7 @@ const Sites = () => {
                   <Label htmlFor="country">Country *</Label>
                   <Input
                     id="country"
-                    placeholder="United Kingdom"
+                    placeholder="e.g., United Kingdom, Germany, France"
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     required
@@ -882,7 +856,7 @@ const Sites = () => {
                     street: "",
                     city: "",
                     county: "",
-                    country: "United Kingdom",
+                    country: "",
                     postcode: "",
                     contactName: "",
                     contactPhone: "",
@@ -907,9 +881,9 @@ const Sites = () => {
                   !formData.city.trim() ||
                   !formData.postcode.trim() ||
                   !formData.country.trim() ||
-                  !validateUKPostcode(formData.postcode) ||
+                  !validatePostcode(formData.postcode, formData.country) ||
                   (isAdmin && !formData.clientId) ||
-                  (formData.postcode.trim() && validateUKPostcode(formData.postcode) && !isValid && validationError)
+                  (formData.postcode.trim() && validatePostcode(formData.postcode, formData.country) && !isValid && validationError)
                 }
               >
                 {createSite.isPending || isVerifying ? (
@@ -996,7 +970,7 @@ const Sites = () => {
                       onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
                       required
                       className={cn(
-                        formData.postcode && !validateUKPostcode(formData.postcode) && "border-warning",
+                        formData.postcode && !validatePostcode(formData.postcode, formData.country) && "border-warning",
                         validationError && "border-destructive",
                         isValid && "border-success"
                       )}
@@ -1007,7 +981,7 @@ const Sites = () => {
                         Verifying address...
                       </p>
                     )}
-                    {formData.postcode && !validateUKPostcode(formData.postcode) && !isVerifying && (
+                    {formData.postcode && !validatePostcode(formData.postcode, formData.country) && !isVerifying && (
                       <p className="text-xs text-warning">
                         ⚠️ Postcode format may be incorrect
                       </p>
@@ -1029,7 +1003,7 @@ const Sites = () => {
                   <Label htmlFor="edit-country">Country *</Label>
                   <Input
                     id="edit-country"
-                    placeholder="United Kingdom"
+                    placeholder="e.g., United Kingdom, Germany, France"
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     required
@@ -1084,8 +1058,8 @@ const Sites = () => {
                   !formData.city.trim() ||
                   !formData.postcode.trim() ||
                   !formData.country.trim() ||
-                  !validateUKPostcode(formData.postcode) ||
-                  (formData.postcode.trim() && validateUKPostcode(formData.postcode) && !isValid && validationError)
+                  !validatePostcode(formData.postcode, formData.country) ||
+                  (formData.postcode.trim() && validatePostcode(formData.postcode, formData.country) && !isValid && validationError)
                 }
               >
                 {updateSite.isPending || isVerifying ? (

@@ -91,7 +91,7 @@ export function AddressAutocomplete({
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             value
-          )}&limit=5&addressdetails=1&countrycodes=gb`
+          )}&limit=5&addressdetails=1`
         );
         const data = await response.json();
         setSuggestions(data);
@@ -117,7 +117,7 @@ export function AddressAutocomplete({
         city: suggestion.address?.city || "",
         county: suggestion.address?.state || suggestion.address?.county || "",
         postcode: suggestion.address?.postcode || "",
-        country: suggestion.address?.country || "United Kingdom",
+        country: suggestion.address?.country || "",
         fullAddress: displayAddress,
         coordinates: {
           lat: parseFloat(suggestion.lat),

@@ -47,6 +47,7 @@ import { useCO2Calculation } from "@/hooks/useCO2";
 import { useBuybackCalculation } from "@/hooks/useBuyback";
 import { useCreateBooking } from "@/hooks/useBooking";
 import { geocodePostcode, geocodeAddressWithDetails } from "@/lib/calculations";
+import { validateEuropeanPostcode, isValidEuropeanCountry } from "@/lib/european-validation";
 
 const steps = [
   { id: 1, title: "Site Details", icon: Building2 },
@@ -73,7 +74,7 @@ const Booking = () => {
     city: "",
     county: "",
     postcode: "",
-    country: "United Kingdom",
+    country: "",
     contactName: "",
     contactPhone: "",
   });
@@ -145,7 +146,7 @@ const Booking = () => {
         city: "",
         county: "",
         postcode: "",
-        country: "United Kingdom",
+        country: "",
         contactName: "",
         contactPhone: "",
       });
@@ -157,14 +158,13 @@ const Booking = () => {
   useEffect(() => {
     // Only geocode if:
     // 1. Creating new site (not selecting existing)
-    // 2. Postcode is entered and valid UK format
+    // 2. Postcode is entered and valid European format
     if (selectedSiteId !== 'new' || !siteDetails.postcode.trim()) {
       return;
     }
 
-    // Validate UK postcode format
-    const postcodeRegex = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
-    if (!postcodeRegex.test(siteDetails.postcode.trim())) {
+    // Validate European postcode format (with optional country for better validation)
+    if (!validateEuropeanPostcode(siteDetails.postcode, siteDetails.country)) {
       return;
     }
 
@@ -245,7 +245,7 @@ const Booking = () => {
         city: "",
         county: "",
         postcode: "",
-        country: "United Kingdom",
+        country: "",
         contactName: "",
         contactPhone: "",
       });
@@ -262,7 +262,7 @@ const Booking = () => {
           city: addressParts[1] || "",
           county: addressParts[2] || "",
           postcode: selectedSite.postcode,
-          country: addressParts[3] || "United Kingdom",
+          country: addressParts[3] || "",
           contactName: selectedSite.contactName || "",
           contactPhone: selectedSite.contactPhone || "",
         });
@@ -836,15 +836,16 @@ const Booking = () => {
                     }}
                     onAddressDetailsChange={(details) => {
                       // Only auto-fill if creating new site
+                      // Only update fields that are empty to avoid overwriting user input
                       if (selectedSiteId === 'new') {
-                        setSiteDetails({
-                          ...siteDetails,
-                          street: details.street || siteDetails.street,
-                          city: details.city || siteDetails.city,
-                          county: details.county || siteDetails.county,
-                          postcode: details.postcode || siteDetails.postcode,
-                          country: details.country || siteDetails.country,
-                        });
+                        setSiteDetails(prev => ({
+                          ...prev,
+                          street: prev.street.trim() || details.street || prev.street,
+                          city: prev.city.trim() || details.city || prev.city,
+                          county: prev.county.trim() || details.county || prev.county,
+                          postcode: prev.postcode.trim() || details.postcode || prev.postcode,
+                          country: prev.country.trim() || details.country || prev.country,
+                        }));
                       }
                     }}
                     height="450px"
@@ -863,7 +864,7 @@ const Booking = () => {
                   )}
                   {!siteLocation && !isGeocodingAddress && selectedSiteId === 'new' && siteDetails.postcode.trim() && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Enter a valid UK postcode to see location on map
+                      Enter a valid postcode to see location on map
                     </p>
                   )}
                 </CardContent>
