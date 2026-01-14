@@ -391,11 +391,12 @@ const Booking = () => {
     
     // Combine address parts - always include all 4 parts (even if county is empty) for consistent parsing
     // This matches the format used in Sites page
+    // Ensure city is always included if it has a value
     const fullAddress = [
-      siteDetails.street,
-      siteDetails.city,
-      siteDetails.county || "", // Include empty county to maintain 4-part format
-      siteDetails.country
+      siteDetails.street?.trim() || "",
+      siteDetails.city?.trim() || "", // Always include city (even if empty, to maintain structure)
+      siteDetails.county?.trim() || "", // Include empty county to maintain 4-part format
+      siteDetails.country?.trim() || ""
     ].join(', ');
     
     // Determine client ID and name

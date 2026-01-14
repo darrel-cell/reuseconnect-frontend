@@ -142,7 +142,8 @@ const Sites = () => {
 
   const handleEdit = (site: any) => {
     // Parse address from saved site
-    // Format can be: "street, city, county, country" OR "street, city, country" (if county was empty)
+    // Format: "street, city, county, country" (4 parts, but street may contain commas)
+    // We need to parse from the end to handle cases where street contains commas
     const addressParts = site.address.split(',').map((s: string) => s.trim());
     
     // Smart parsing: check if any part is a known European country
@@ -154,31 +155,59 @@ const Sites = () => {
     let county = "";
     let country = "";
     
-    if (addressParts.length === 3 && isCountryInLastPart) {
-      // Format: "street, city, country" (county was empty)
-      street = addressParts[0] || "";
-      city = addressParts[1] || "";
-      county = ""; // County was empty
-      country = addressParts[2] || "";
-    } else if (addressParts.length === 4) {
-      // Format: "street, city, county, country"
-      street = addressParts[0] || "";
-      city = addressParts[1] || "";
-      county = addressParts[2] || "";
-      country = addressParts[3] || "";
-    } else if (addressParts.length >= 2) {
-      // Fallback: try to parse intelligently
-      street = addressParts[0] || "";
-      city = addressParts[1] || "";
-      if (addressParts.length > 2) {
-        // Check if second-to-last is county or country
-        const secondLast = addressParts[addressParts.length - 2] || "";
-        if (isCountryInLastPart && addressParts.length === 3) {
-          county = "";
-          country = lastPart;
+    if (addressParts.length >= 2) {
+      // Always take the last part as country (if it's a valid country)
+      if (isCountryInLastPart) {
+        country = lastPart;
+        
+        // If we have at least 3 parts, second-to-last is county (or city if only 3 parts)
+        if (addressParts.length >= 3) {
+          const secondLast = addressParts[addressParts.length - 2] || "";
+          
+          if (addressParts.length === 3) {
+            // Format: "street, city, country" (county was empty)
+            street = addressParts[0] || "";
+            city = addressParts[1] || "";
+            county = "";
+          } else if (addressParts.length === 4) {
+            // Format: "street, city, county, country"
+            street = addressParts[0] || "";
+            city = addressParts[1] || "";
+            county = addressParts[2] || "";
+          } else {
+            // More than 4 parts: street contains commas
+            // Take last 3 parts as: city, county, country
+            // Everything before is street
+            city = addressParts[addressParts.length - 3] || "";
+            county = addressParts[addressParts.length - 2] || "";
+            // Join all parts before the last 3 as street
+            street = addressParts.slice(0, addressParts.length - 3).join(', ') || "";
+          }
         } else {
-          county = secondLast;
-          country = lastPart;
+          // Only 2 parts: "street, country" (shouldn't happen, but handle it)
+          street = addressParts[0] || "";
+          city = "";
+          county = "";
+        }
+      } else {
+        // Last part is not a country - fallback parsing
+        // Try to identify country from the end
+        if (addressParts.length >= 4) {
+          // Assume last 3 are: city, county, country
+          city = addressParts[addressParts.length - 3] || "";
+          county = addressParts[addressParts.length - 2] || "";
+          country = addressParts[addressParts.length - 1] || "";
+          street = addressParts.slice(0, addressParts.length - 3).join(', ') || "";
+        } else if (addressParts.length === 3) {
+          // Assume: street, city, country
+          street = addressParts[0] || "";
+          city = addressParts[1] || "";
+          county = "";
+          country = addressParts[2] || "";
+        } else {
+          // Fallback: just take first as street, rest as city
+          street = addressParts[0] || "";
+          city = addressParts.slice(1).join(', ') || "";
         }
       }
     }
