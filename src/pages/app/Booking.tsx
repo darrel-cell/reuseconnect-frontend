@@ -314,16 +314,15 @@ const Booking = () => {
     electric: 0,
   };
 
-  // TODO: Replace with actual calculation formula when provided by client
+  // Cost of collection = £395 plus £5 per Unit to wipe, provide a certificate and dispose of needed
   const calculateEstimatedCost = (): number => {
-    if (distanceKm === 0 || totalAssets === 0) return 0;
-    // Base cost + distance-based cost + processing cost per asset
-    const baseCost = 50; // Base collection fee
-    const distanceCost = distanceKm * 0.5; // £0.50 per km (round trip)
-    const processingCostPerAsset = 2; // £2 per asset for processing
-    const totalProcessingCost = totalAssets * processingCostPerAsset;
+    if (totalAssets === 0) return 0;
+    // Base collection cost + cost per unit (wiping, certificate, disposal)
+    const baseCost = 395; // Base collection fee
+    const costPerUnit = 5; // £5 per unit for wiping, certificate, and disposal if needed
+    const totalUnitCost = totalAssets * costPerUnit;
     
-    return baseCost + distanceCost + totalProcessingCost;
+    return baseCost + totalUnitCost;
   };
   
   const estimatedCost = calculateEstimatedCost();
@@ -1387,8 +1386,7 @@ const Booking = () => {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground pt-2 border-t">
-                      This includes collection from your site to our warehouse (RM13 8BT) and processing fees.
-                      Final cost may vary based on actual distance and processing requirements.
+                      This includes collection from your site (£395 base cost) plus £5 per unit for wiping, certificate provision, and disposal if needed.
                     </div>
                   </div>
                 </CardContent>
