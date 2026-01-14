@@ -145,24 +145,32 @@ export async function geocodeAddressWithDetails(
         }
 
         // Extract city - prioritize actual city/town/village, avoid using road names
-        // Don't use suburb/neighbourhood if they might be road names
+        // Check municipality first (common in European addresses like France)
+        // Note: 'road' is already declared above
         let city = result.address.city || 
                    result.address.town || 
                    result.address.village || 
-                   result.address.locality ||
+                   result.address.municipality || // Common in France and other European countries
                    "";
+        
+        // Only use locality if it doesn't match the road name (locality can sometimes be the road)
+        if (!city) {
+          const locality = result.address.locality || "";
+          if (locality && locality.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(locality.toLowerCase()) && !locality.toLowerCase().includes(road.toLowerCase())) {
+            city = locality;
+          }
+        }
         
         // Only use suburb/neighbourhood as fallback if they don't match the road name
         // This prevents road names from being used as city names
         if (!city) {
           const suburb = result.address.suburb || "";
           const neighbourhood = result.address.neighbourhood || "";
-          const road = result.address.road || "";
           
           // Use suburb only if it doesn't match the road name
-          if (suburb && suburb.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(suburb.toLowerCase())) {
+          if (suburb && suburb.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(suburb.toLowerCase()) && !suburb.toLowerCase().includes(road.toLowerCase())) {
             city = suburb;
-          } else if (neighbourhood && neighbourhood.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(neighbourhood.toLowerCase())) {
+          } else if (neighbourhood && neighbourhood.toLowerCase() !== road.toLowerCase() && !road.toLowerCase().includes(neighbourhood.toLowerCase()) && !neighbourhood.toLowerCase().includes(road.toLowerCase())) {
             city = neighbourhood;
           }
         }

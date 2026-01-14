@@ -37,7 +37,8 @@ import {
   validateEuropeanPostcode, 
   isValidEuropeanCountry, 
   normalizeEuropeanCountry,
-  extractEuropeanPostcode 
+  extractEuropeanPostcode,
+  getCountryCode
 } from "@/lib/european-validation";
 import type { CreateSiteRequest, UpdateSiteRequest } from "@/services/site.service";
 
@@ -53,7 +54,18 @@ const Sites = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedSite, setSelectedSite] = useState<any>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  // Field-specific validation errors and warnings (reasons stored internally, not displayed)
+  const [fieldErrors, setFieldErrors] = useState<{
+    street?: string;
+    city?: string;
+    county?: string;
+    postcode?: string;
+  }>({});
+  const [fieldWarnings, setFieldWarnings] = useState<{
+    street?: string;
+    city?: string;
+    county?: string;
+  }>({});
   const [isValid, setIsValid] = useState(false);
   
   // Form state - separate address fields to match booking form
@@ -121,7 +133,8 @@ const Sites = () => {
         lat: undefined,
         lng: undefined,
       });
-      setValidationError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
       setIsValid(false);
       setSelectedSite(null);
       setIsCreateDialogOpen(true);
@@ -183,7 +196,8 @@ const Sites = () => {
       lat: site.lat,
       lng: site.lng,
     });
-    setValidationError(null);
+    setFieldErrors({});
+    setFieldWarnings({});
     setIsValid(false);
     setSelectedSite(site);
     setIsEditDialogOpen(true);
@@ -203,7 +217,8 @@ const Sites = () => {
   useEffect(() => {
     if (!formData.postcode.trim() || !validatePostcode(formData.postcode, formData.country)) {
       setIsValid(false);
-      setValidationError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
       return;
     }
 
@@ -211,7 +226,8 @@ const Sites = () => {
     // Also verify if city is entered (required field)
     if (!formData.city.trim() && !formData.country.trim()) {
       setIsValid(false);
-      setValidationError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
       return;
     }
 
@@ -226,12 +242,14 @@ const Sites = () => {
   const verifyAddressFields = async () => {
     if (!formData.postcode.trim() || !validatePostcode(formData.postcode, formData.country)) {
       setIsValid(false);
-      setValidationError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
       return;
     }
 
     setIsVerifying(true);
-    setValidationError(null);
+    setFieldErrors({});
+    setFieldWarnings({});
 
     try {
       const verification = await verifyPostcodeMatch(
@@ -242,31 +260,24 @@ const Sites = () => {
         formData.country
       );
 
-      if (verification.error) {
-        setIsValid(false);
-        setValidationError("Postcode not found. Please check it's correct.");
-        return;
+      // Set field-specific errors and warnings (reasons stored internally, not displayed)
+      if (verification.fieldErrors) {
+        setFieldErrors(verification.fieldErrors);
+      } else {
+        setFieldErrors({});
       }
 
-      if (!verification.match && verification.suggestions) {
-        setIsValid(false);
-        setValidationError(
-          `Postcode doesn't match: ${verification.suggestions.join(', ')}`
-        );
-        // Auto-update coordinates if available
-        if (verification.coordinates) {
-          setFormData(prev => ({
-            ...prev,
-            lat: verification.coordinates!.lat,
-            lng: verification.coordinates!.lng,
-          }));
-        }
-        return;
+      if (verification.fieldWarnings) {
+        setFieldWarnings(verification.fieldWarnings);
+      } else {
+        setFieldWarnings({});
       }
 
-      // All good!
-      setIsValid(true);
-      setValidationError(null);
+      // Set overall validation state
+      const hasErrors = verification.fieldErrors && Object.keys(verification.fieldErrors).length > 0;
+      setIsValid(!hasErrors);
+
+      // Update coordinates if available
       if (verification.coordinates) {
         setFormData(prev => ({
           ...prev,
@@ -275,9 +286,9 @@ const Sites = () => {
         }));
       }
     } catch (error) {
-      console.error("Verification error:", error);
-      setIsValid(false);
-      setValidationError("Could not verify address. Please check your connection.");
+      setIsValid(true); // Allow submission on error (don't block)
+      setFieldErrors({});
+      setFieldWarnings({});
     } finally {
       setIsVerifying(false);
     }
@@ -290,61 +301,374 @@ const Sites = () => {
     }
 
     try {
-      // Geocode postcode to get actual address details - removed country restriction for European support
+      // Geocode postcode to get actual address details - fetch multiple results to check if city is valid
+      // Postcodes can cover multiple cities, so we need to check multiple results
+      // Using maximum limit=40 to get comprehensive coverage of all cities for a postcode
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=40&addressdetails=1`
       );
-      const data = await response.json();
+      const allData = await response.json();
       
-      if (data.length === 0) {
+      if (allData.length === 0) {
         return { match: true, error: "Postcode not found" };
       }
 
+      const enteredCountry = country.trim().toLowerCase();
+      const normalizedEnteredCountry = normalizeEuropeanCountry(enteredCountry);
+      
+      // CRITICAL: Filter results to only those matching the entered country
+      // Same postcode can exist in multiple countries (e.g., "77120" in France and Finland)
+      // We must only validate against results from the correct country
+      const data = allData.filter((r: any) => {
+        const geocodedCountry = (r.address?.country || "").toLowerCase();
+        const normalizedGeocodedCountry = normalizeEuropeanCountry(geocodedCountry);
+        return normalizedEnteredCountry && normalizedGeocodedCountry && 
+               normalizedEnteredCountry === normalizedGeocodedCountry;
+      });
+      
+      // If no results match the entered country, the postcode doesn't exist in that country
+      // This is a CRITICAL ERROR - block submission
+      if (data.length === 0) {
+        // Find a sample result from a different country to show in error message
+        const sampleResult = allData[0];
+        const sampleCountry = sampleResult.address?.country || "Unknown";
+        const sampleCounty = sampleResult.address?.county || sampleResult.address?.state || "Unknown";
+        return {
+          match: false,
+          isError: true, // Critical error - block submission
+          error: `Postcode not found in ${country}. Found in: ${sampleCountry}`,
+          fieldErrors: { postcode: `Postcode not found in ${country}` },
+          fieldWarnings: {},
+          suggestedCountry: sampleCountry,
+          suggestedCounty: sampleCounty,
+          suggestions: [`Country: ${sampleCountry}`, `County: ${sampleCounty}`],
+        };
+      }
+
+      // Use first result as primary, but check all results for city matches (all from correct country now)
       const result = data[0];
-      const geocodedCity = (result.address?.city || result.address?.town || result.address?.village || "").toLowerCase();
-      const geocodedCounty = (result.address?.county || result.address?.state || "").toLowerCase();
+      // Get city from first result (for comparison purposes)
+      const geocodedCity = (result.address?.city || result.address?.town || result.address?.village || result.address?.municipality || "").toLowerCase();
+      // Get county from first result, but also check all results for county matches
+      const geocodedCounty = (result.address?.county || result.address?.state || result.address?.region || result.address?.province || "").toLowerCase();
       const geocodedCountry = (result.address?.country || "").toLowerCase();
       const geocodedStreet = (result.address?.road || "").toLowerCase();
       
       const enteredCity = city.trim().toLowerCase();
       const enteredCounty = county.trim().toLowerCase();
-      const enteredCountry = country.trim().toLowerCase();
       const enteredStreet = street.trim().toLowerCase();
 
-      // Check for mismatches
-      const cityMismatch = enteredCity && geocodedCity && !geocodedCity.includes(enteredCity) && !enteredCity.includes(geocodedCity);
-      const countyMismatch = enteredCounty && geocodedCounty && !geocodedCounty.includes(enteredCounty) && !enteredCounty.includes(geocodedCounty);
+      // Check if entered city appears in any of the geocoded results (postcodes can cover multiple cities)
+      // Also check all administrative levels (city, town, village, municipality) from all results
+      // Also check display_name for city names (some cities might only appear there)
+      // Note: all results are now from the correct country
+      const allGeocodedCities = data.map((r: any) => {
+        const cities = [
+          r.address?.city,
+          r.address?.town,
+          r.address?.village,
+          r.address?.municipality,
+          r.address?.locality,
+          r.address?.post_town // UK addresses
+        ].filter(Boolean).map((c: string) => c.toLowerCase());
+        
+        // Also extract city names from display_name (e.g., "Beautheil-Saints, Seine-et-Marne, France")
+        if (r.display_name) {
+          const displayParts = r.display_name.split(',').map((p: string) => p.trim().toLowerCase());
+          // The first part is usually the most specific location (city/town)
+          if (displayParts.length > 0 && displayParts[0]) {
+            cities.push(displayParts[0]);
+          }
+        }
+        
+        return cities;
+      }).flat().filter((c: string, index: number, self: string[]) => self.indexOf(c) === index); // Remove duplicates
+      
+      // Helper function to detect obviously invalid entries (pure numbers, too short, no letters)
+      const isObviouslyInvalid = (value: string, fieldType: 'city' | 'county' | 'street'): boolean => {
+        if (!value || value.trim().length === 0) return false; // Empty is handled elsewhere
+        
+        const trimmed = value.trim();
+        
+        // Pure numeric strings without context are invalid
+        if (/^\d+$/.test(trimmed)) {
+          return true; // Pure numbers like "123", "123123" are invalid
+        }
+        
+        // Too short (less than 2 characters) is suspicious
+        if (trimmed.length < 2) {
+          return true;
+        }
+        
+        // Check for allowed numeric patterns with context (Sector 7, Zone 3, District 9, Area 51)
+        const allowedNumericPatterns = /^(sector|zone|district|area|route|road|rd|street|st|avenue|ave|boulevard|blvd|drive|dr|lane|ln|way|wy)\s+\d+/i;
+        if (allowedNumericPatterns.test(trimmed)) {
+          return false; // Allowed pattern
+        }
+        
+        // For city and county: must contain at least one letter OR be a known address token
+        if (fieldType === 'city' || fieldType === 'county') {
+          if (!/[a-zA-ZÀ-ÿ]/.test(trimmed)) {
+            return true; // No letters at all - invalid
+          }
+        }
+        
+        // For street: can be just numbers (like "123 Main St"), but if it's just numbers with no context, it's suspicious
+        // Also allow numeric routes (A4, B27, D917)
+        if (fieldType === 'street') {
+          const numericRoutePattern = /^[A-Z]\d+$/i;
+          if (numericRoutePattern.test(trimmed)) {
+            return false; // Numeric routes like A4, B27, D917 are allowed
+          }
+        }
+        
+        return false;
+      };
+      
+      // Helper function for strict matching: requires minimum length and word boundary matching
+      // Prevents single character matches (e.g., "S" matching "Seine-et-Marne")
+      // Enhanced to handle hyphenated city names and variations
+      const strictMatch = (entered: string, geocoded: string): boolean => {
+        if (!entered || !geocoded) return false;
+        
+        // Normalize both strings (remove extra spaces, normalize hyphens/spaces, handle accents)
+        const normalize = (str: string) => {
+          return str.toLowerCase()
+            .trim()
+            .replace(/[\s-]+/g, ' ') // Normalize hyphens and spaces
+            .normalize('NFD') // Decompose accented characters
+            .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+        };
+        
+        const normalizedEntered = normalize(entered);
+        const normalizedGeocoded = normalize(geocoded);
+        
+        // Exact match after normalization (handles "Beautheil-Saints" vs "Beautheil Saints")
+        if (normalizedEntered === normalizedGeocoded) {
+          return true;
+        }
+        
+        // Require minimum 3 characters for meaningful comparison
+        if (normalizedEntered.length < 3 && normalizedGeocoded.length < 3) {
+          return normalizedEntered === normalizedGeocoded;
+        }
+        
+        // For longer strings, use word boundary matching
+        // Split on spaces (already normalized), filter empty
+        const words = normalizedGeocoded.split(/\s+/).filter(w => w.length > 0);
+        const enteredWords = normalizedEntered.split(/\s+/).filter(w => w.length > 0);
+        
+        // Check if all significant words from entered appear in geocoded (lenient matching)
+        // This handles cases like "Beautheil-Saints" matching "Beautheil" or "Beautheil Saints"
+        const allWordsMatch = enteredWords.every(ew => 
+          words.some(gw => 
+            ew === gw || // Exact word match
+            (ew.length >= 4 && gw.startsWith(ew)) || // Prefix match for longer words
+            (gw.length >= 4 && ew.startsWith(gw)) || // Reverse prefix match
+            (ew.length >= 3 && gw.includes(ew)) || // Substring match for compound names
+            (gw.length >= 3 && ew.includes(gw)) // Reverse substring match
+          )
+        );
+        
+        // Also check if any significant word matches (for partial matches)
+        // For city names, if the first word matches, it's likely correct
+        const firstWordMatches = enteredWords.length > 0 && words.length > 0 && 
+          (enteredWords[0] === words[0] || 
+           (enteredWords[0].length >= 4 && words[0].startsWith(enteredWords[0])) ||
+           (words[0].length >= 4 && enteredWords[0].startsWith(words[0])));
+        
+        const anyWordMatches = enteredWords.some(ew => 
+          words.some(gw => 
+            ew === gw || 
+            (ew.length >= 4 && gw.startsWith(ew)) || 
+            (gw.length >= 4 && ew.startsWith(gw))
+          )
+        );
+        
+        return (
+          allWordsMatch || // All words match (best case)
+          (firstWordMatches && enteredWords.length <= 2) || // First word matches for short compound names
+          anyWordMatches || // At least one significant word matches
+          (normalizedEntered.length >= 4 && normalizedGeocoded.startsWith(normalizedEntered)) || // Prefix match
+          (normalizedGeocoded.length >= 4 && normalizedEntered.startsWith(normalizedGeocoded)) // Reverse prefix match
+        );
+      };
+      
+      // City validation: must match a geocoded city using strict matching
+      // Always check city validation regardless of county match
+      const cityFoundInResults = enteredCity && allGeocodedCities.some((gc: string) => 
+        strictMatch(enteredCity, gc)
+      );
+      
+      // County validation: use strict matching to prevent partial matches like "S" matching "Seine-et-Marne"
+      // Check against all results, not just first one (counties can vary across results)
+      const allGeocodedCounties = data.map((r: any) => {
+        return [
+          r.address?.county,
+          r.address?.state,
+          r.address?.region,
+          r.address?.province
+        ].filter(Boolean).map((c: string) => c.toLowerCase());
+      }).flat().filter((c: string, index: number, self: string[]) => self.indexOf(c) === index);
+      
+      const countyMatches = enteredCounty && allGeocodedCounties.some((gc: string) => 
+        strictMatch(enteredCounty, gc)
+      );
       
       // Country verification: check if entered country matches geocoded country
-      // Use European country normalization
-      const normalizedEnteredCountry = normalizeEuropeanCountry(enteredCountry);
+      // Note: We've already filtered results to the correct country, so this should always match
+      // But we keep the check for safety
       const normalizedGeocodedCountry = normalizeEuropeanCountry(geocodedCountry);
+      const countryMatches = normalizedEnteredCountry && normalizedGeocodedCountry && 
+        normalizedEnteredCountry === normalizedGeocodedCountry;
+      
+      // City mismatch: flag if city doesn't match
+      // However, if county matches, we're more lenient (postcodes can span multiple cities in same county)
+      // Only flag as mismatch if BOTH city doesn't match AND county doesn't match
+      // This prevents false warnings for valid cities that just aren't in the geocoded results
+      // Note: We check allGeocodedCities (all results), not just geocodedCity (first result)
+      const cityMismatch = enteredCity && 
+        !cityFoundInResults && 
+        !countyMatches; // If county matches, don't flag city mismatch (postcodes span multiple cities)
+      
+      // County mismatch: use strict matching to prevent false positives
+      const countyMismatch = enteredCounty && geocodedCounty && !countyMatches;
       
       // Country mismatch: must be exact match after normalization
-      // Reject if entered country is not a valid European country or doesn't match geocoded country
+      // Note: We've already filtered results to the correct country, so this should rarely trigger
+      // But we keep the check for safety (e.g., if normalization fails)
+      // This is a CRITICAL ERROR - block submission
       const countryMismatch = enteredCountry && geocodedCountry && (
         !normalizedEnteredCountry || // Entered country is not a valid European country
         (normalizedEnteredCountry !== normalizedGeocodedCountry && normalizedGeocodedCountry) // Mismatch when both are valid
       );
-      // Street is harder to verify exactly, so we'll be lenient - only check if street name is clearly wrong
-      const streetMismatch = enteredStreet && geocodedStreet && 
-        !geocodedStreet.includes(enteredStreet.split(' ')[0]) && 
-        !enteredStreet.includes(geocodedStreet.split(' ')[0]);
+      
+      // Street validation: use confidence-based matching
+      // Remove generic terms before comparison, then check word-by-word
+      const genericTerms = new Set(['street', 'st', 'road', 'rd', 'lane', 'ln', 'ave', 'avenue', 'boulevard', 'blvd', 'drive', 'dr', 'way', 'wy', 'court', 'ct', 'circle', 'cir', 'place', 'pl']);
+      
+      const streetValidation = enteredStreet && geocodedStreet && (() => {
+        // Tokenize and remove generic terms, keep only meaningful words (3+ chars)
+        const enteredWords = enteredStreet
+          .split(/\s+/)
+          .map(w => w.toLowerCase().replace(/[.,]/g, ''))
+          .filter(w => w.length >= 3 && !genericTerms.has(w));
+        
+        const geocodedWords = geocodedStreet
+          .split(/\s+/)
+          .map(w => w.toLowerCase().replace(/[.,]/g, ''))
+          .filter(w => w.length >= 3 && !genericTerms.has(w));
+        
+        // If no meaningful words after filtering, skip validation (too ambiguous)
+        if (enteredWords.length === 0 || geocodedWords.length === 0) {
+          return { match: false, confidence: 0 }; // Ambiguous, treat as warning
+        }
+        
+        // Count matches with confidence levels
+        let matchCount = 0;
+        let weakMatchCount = 0;
+        
+        enteredWords.forEach(ew => {
+          geocodedWords.forEach(gw => {
+            if (ew === gw) {
+              matchCount++; // Exact match
+            } else if (ew.length >= 4 && gw.startsWith(ew)) {
+              matchCount++; // Strong prefix match
+            } else if (gw.length >= 4 && ew.startsWith(gw)) {
+              matchCount++; // Strong reverse prefix match
+            } else if (ew.length >= 3 && (gw.includes(ew) || ew.includes(gw))) {
+              weakMatchCount++; // Weak match (substring)
+            }
+          });
+        });
+        
+        // Confidence levels:
+        // ≥2 meaningful matches → Valid (no warning)
+        // 1 weak match → WARNING
+        // No matches → WARNING
+        if (matchCount >= 2) {
+          return { match: true, confidence: matchCount };
+        } else if (matchCount === 1 || weakMatchCount >= 1) {
+          return { match: false, confidence: 1 }; // Weak match - warning
+        } else {
+          return { match: false, confidence: 0 }; // No match - warning
+        }
+      })();
+      
+      const streetMismatch = streetValidation && !streetValidation.match;
 
-      if (cityMismatch || countyMismatch || countryMismatch || streetMismatch) {
-        const suggestions: string[] = [];
-        if (cityMismatch) suggestions.push(`City: ${result.address?.city || result.address?.town || result.address?.village || city}`);
-        if (countyMismatch) suggestions.push(`County: ${result.address?.county || result.address?.state || county}`);
-        if (countryMismatch) suggestions.push(`Country: ${result.address?.country || country}`);
-        if (streetMismatch) suggestions.push(`Street: ${result.address?.road || street}`);
+      // Collect warnings (non-critical) and errors (critical)
+      // Reasons stored internally only, not displayed to user
+      const warnings: string[] = [];
+      const errors: string[] = [];
 
+      // Check for obviously invalid entries first (these are ERRORS, not warnings)
+      // Return field-specific errors/warnings (reasons stored internally)
+      const fieldErrors: {
+        street?: string;
+        city?: string;
+        county?: string;
+        postcode?: string;
+      } = {};
+      const fieldWarnings: {
+        street?: string;
+        city?: string;
+        county?: string;
+      } = {};
+
+      // City validation: check for obviously invalid first
+      if (enteredCity && isObviouslyInvalid(enteredCity, 'city')) {
+        fieldErrors.city = `Invalid city`; // Simple message for display
+      } else if (cityMismatch) {
+        // City mismatch: only show WARNING if county also doesn't match
+        // If county matches, accept city (postcodes can span multiple cities in same county)
+        // This prevents false warnings for valid cities like "Beautheil-Saints" when county matches
+        if (!countyMatches) {
+          fieldWarnings.city = `May not match postcode`; // Simple message for display
+        }
+        // If county matches, no warning (city is accepted)
+      }
+
+      if (enteredCounty && isObviouslyInvalid(enteredCounty, 'county')) {
+        fieldErrors.county = `Invalid county`; // Simple message for display
+      } else if (countyMismatch) {
+        // County mismatch: WARNING (check against county, state, region, province)
+        fieldWarnings.county = `May not match postcode`; // Simple message for display
+      }
+
+      // Street validation: use confidence-based approach
+      if (enteredStreet && isObviouslyInvalid(enteredStreet, 'street')) {
+        // Make this a warning, not error, since street numbers can be just digits
+        fieldWarnings.street = `Unusual format`; // Simple message for display
+      } else if (streetMismatch) {
+        // Street mismatch: WARNING (based on confidence levels)
+        fieldWarnings.street = `May not match postcode`; // Simple message for display
+      }
+
+      // Convert to arrays for backward compatibility with existing code
+      if (Object.keys(fieldErrors).length > 0) {
+        errors.push(...Object.values(fieldErrors).filter(Boolean) as string[]);
+      }
+      if (Object.keys(fieldWarnings).length > 0) {
+        warnings.push(...Object.values(fieldWarnings).filter(Boolean) as string[]);
+      }
+
+      // Country mismatch: ERROR (critical - must match)
+      if (countryMismatch) {
+        errors.push(`Country "${country}" does not match postcode "${postcode}"`);
+      }
+
+      // Return result with field-specific errors/warnings
+      const hasErrors = Object.keys(fieldErrors).length > 0;
+      
+      if (hasErrors) {
         return {
           match: false,
-          suggestedCity: result.address?.city || result.address?.town || result.address?.village || city,
-          suggestedCounty: result.address?.county || result.address?.state || county,
-          suggestedCountry: result.address?.country || country,
-          suggestedStreet: result.address?.road || street,
-          suggestions: suggestions,
+          isError: true, // Critical error - block submission
+          error: errors.join("; "), // Keep for backward compatibility
+          warnings: warnings,
+          fieldErrors: fieldErrors,
+          fieldWarnings: fieldWarnings,
           coordinates: {
             lat: parseFloat(result.lat),
             lng: parseFloat(result.lon),
@@ -352,8 +676,27 @@ const Sites = () => {
         };
       }
 
+      if (warnings.length > 0 || Object.keys(fieldWarnings).length > 0) {
+        return {
+          match: true, // Allow submission but with warnings
+          isError: false,
+          warnings: warnings,
+          fieldErrors: {},
+          fieldWarnings: fieldWarnings,
+          coordinates: {
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+          },
+        };
+      }
+
+      // Perfect match - no warnings or errors
       return {
         match: true,
+        isError: false,
+        warnings: [],
+        fieldErrors: {},
+        fieldWarnings: {},
         coordinates: {
           lat: parseFloat(result.lat),
           lng: parseFloat(result.lon),
@@ -361,7 +704,12 @@ const Sites = () => {
       };
     } catch (error) {
       console.error("Postcode verification error:", error);
-      return { match: true, error: "Verification failed" };
+      // On error, allow submission but show warning
+      return { 
+        match: true, 
+        isError: false,
+        warnings: ["Could not verify address. Please double-check your entry."],
+      };
     }
   };
 
@@ -381,9 +729,11 @@ const Sites = () => {
       return;
     }
 
-    // Check if address is valid
-    if (!isValid && validationError) {
-      toast.error(validationError);
+    // Check if address has critical errors (block submission)
+    const hasErrors = Object.keys(fieldErrors).length > 0;
+    if (hasErrors) {
+      const errorMessages = Object.values(fieldErrors).filter(Boolean);
+      toast.error(errorMessages.join("; "));
       return;
     }
 
@@ -470,9 +820,11 @@ const Sites = () => {
       return;
     }
 
-    // Check if address is valid
-    if (!isValid && validationError) {
-      toast.error(validationError);
+    // Check if address has critical errors (block submission)
+    const hasErrors = Object.keys(fieldErrors).length > 0;
+    if (hasErrors) {
+      const errorMessages = Object.values(fieldErrors).filter(Boolean);
+      toast.error(errorMessages.join("; "));
       return;
     }
 
@@ -744,7 +1096,24 @@ const Sites = () => {
                   value={formData.street}
                   onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                   required
+                  className={cn(
+                    fieldErrors.street && "border-destructive",
+                    fieldWarnings.street && "border-amber-500",
+                    !fieldErrors.street && !fieldWarnings.street && formData.street && "border-green-500"
+                  )}
                 />
+                <div className="min-h-[14px] -mb-1">
+                  {fieldErrors.street && !isVerifying && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.street}
+                    </p>
+                  )}
+                  {fieldWarnings.street && !isVerifying && !fieldErrors.street && (
+                    <p className="text-xs text-amber-600 dark:text-amber-500">
+                      {fieldWarnings.street}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -756,11 +1125,31 @@ const Sites = () => {
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     required
+                    className={cn(
+                      fieldErrors.city && "border-destructive",
+                      fieldWarnings.city && "border-amber-500",
+                      !fieldErrors.city && !fieldWarnings.city && formData.city && "border-green-500"
+                    )}
                   />
+                  <div className="min-h-[14px] -mb-1">
+                    {fieldErrors.city && !isVerifying && (
+                      <p className="text-xs text-destructive">
+                        {fieldErrors.city}
+                      </p>
+                    )}
+                    {fieldWarnings.city && !isVerifying && !fieldErrors.city && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">
+                        {fieldWarnings.city}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="county">County</Label>
+                  <div className="min-h-[14px]">
+                    {/* Reserved space for county messages if needed in future */}
+                  </div>
                   <Input
                     id="county"
                     placeholder="Greater London"
@@ -773,7 +1162,7 @@ const Sites = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="postcode">Postcode *</Label>
-                  <div className="space-y-1">
+                  <div className="relative">
                     <Input
                       id="postcode"
                       placeholder="e.g., M1 1AA"
@@ -782,29 +1171,26 @@ const Sites = () => {
                       required
                       className={cn(
                         formData.postcode && !validatePostcode(formData.postcode, formData.country) && "border-warning",
-                        validationError && "border-destructive",
-                        isValid && "border-success"
+                        fieldErrors.postcode && "border-destructive",
+                        isValid && !fieldErrors.postcode && "border-green-500",
+                        "pr-8"
                       )}
                     />
                     {isVerifying && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Verifying address...
-                      </p>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
                     )}
-                    {formData.postcode && !validatePostcode(formData.postcode, formData.country) && !isVerifying && (
-                      <p className="text-xs text-warning">
-                        ⚠️ Postcode format may be incorrect
-                      </p>
+                    {!isVerifying && isValid && !fieldErrors.postcode && Object.keys(fieldWarnings).length === 0 && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <span className="text-green-600 text-lg">✓</span>
+                      </div>
                     )}
-                    {validationError && !isVerifying && (
+                  </div>
+                  <div className="min-h-[14px] -mb-1">
+                    {fieldErrors.postcode && !isVerifying && (
                       <p className="text-xs text-destructive">
-                        {validationError}
-                      </p>
-                    )}
-                    {isValid && !isVerifying && (
-                      <p className="text-xs text-success">
-                        ✓ Address verified
+                        {fieldErrors.postcode}
                       </p>
                     )}
                   </div>
@@ -819,6 +1205,9 @@ const Sites = () => {
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     required
                   />
+                  <div className="min-h-[14px]">
+                    {/* Reserved space for country messages if needed in future */}
+                  </div>
                 </div>
               </div>
 
@@ -864,7 +1253,8 @@ const Sites = () => {
                     lat: undefined,
                     lng: undefined,
                   });
-                  setValidationError(null);
+                  setFieldErrors({});
+                  setFieldWarnings({});
                   setIsValid(false);
                 }}
                 disabled={createSite.isPending}
@@ -883,7 +1273,7 @@ const Sites = () => {
                   !formData.country.trim() ||
                   !validatePostcode(formData.postcode, formData.country) ||
                   (isAdmin && !formData.clientId) ||
-                  (formData.postcode.trim() && validatePostcode(formData.postcode, formData.country) && !isValid && validationError)
+                  Object.keys(fieldErrors).length > 0 // Block only on critical errors, allow with warnings
                 }
               >
                 {createSite.isPending || isVerifying ? (
@@ -913,7 +1303,7 @@ const Sites = () => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitEdit}>
-            <div className="space-y-4 py-4">
+            <div className="py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Site Name *</Label>
                 <Input
@@ -933,7 +1323,24 @@ const Sites = () => {
                   value={formData.street}
                   onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                   required
+                  className={cn(
+                    fieldErrors.street && "border-destructive",
+                    fieldWarnings.street && "border-amber-500",
+                    !fieldErrors.street && !fieldWarnings.street && formData.street && "border-green-500"
+                  )}
                 />
+                <div className="min-h-[14px] -mb-1">
+                  {fieldErrors.street && !isVerifying && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.street}
+                    </p>
+                  )}
+                  {fieldWarnings.street && !isVerifying && !fieldErrors.street && (
+                    <p className="text-xs text-amber-600 dark:text-amber-500">
+                      {fieldWarnings.street}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -945,7 +1352,24 @@ const Sites = () => {
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     required
+                    className={cn(
+                      fieldErrors.city && "border-destructive",
+                      fieldWarnings.city && "border-amber-500",
+                      !fieldErrors.city && !fieldWarnings.city && formData.city && "border-green-500"
+                    )}
                   />
+                  <div className="min-h-[14px] -mb-1">
+                    {fieldErrors.city && !isVerifying && (
+                      <p className="text-xs text-destructive">
+                        {fieldErrors.city}
+                      </p>
+                    )}
+                    {fieldWarnings.city && !isVerifying && !fieldErrors.city && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">
+                        {fieldWarnings.city}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -955,14 +1379,31 @@ const Sites = () => {
                     placeholder="Greater London"
                     value={formData.county}
                     onChange={(e) => setFormData({ ...formData, county: e.target.value })}
+                    className={cn(
+                      fieldErrors.county && "border-destructive",
+                      fieldWarnings.county && "border-amber-500",
+                      !fieldErrors.county && !fieldWarnings.county && formData.county && "border-green-500"
+                    )}
                   />
+                  <div className="min-h-[14px] -mb-1">
+                    {fieldErrors.county && !isVerifying && (
+                      <p className="text-xs text-destructive">
+                        {fieldErrors.county}
+                      </p>
+                    )}
+                    {fieldWarnings.county && !isVerifying && !fieldErrors.county && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">
+                        {fieldWarnings.county}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-postcode">Postcode *</Label>
-                  <div className="space-y-1">
+                  <div className="relative">
                     <Input
                       id="edit-postcode"
                       placeholder="e.g., M1 1AA"
@@ -971,29 +1412,26 @@ const Sites = () => {
                       required
                       className={cn(
                         formData.postcode && !validatePostcode(formData.postcode, formData.country) && "border-warning",
-                        validationError && "border-destructive",
-                        isValid && "border-success"
+                        fieldErrors.postcode && "border-destructive",
+                        isValid && !fieldErrors.postcode && "border-green-500",
+                        "pr-8"
                       )}
                     />
                     {isVerifying && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Verifying address...
-                      </p>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
                     )}
-                    {formData.postcode && !validatePostcode(formData.postcode, formData.country) && !isVerifying && (
-                      <p className="text-xs text-warning">
-                        ⚠️ Postcode format may be incorrect
-                      </p>
+                    {!isVerifying && isValid && !fieldErrors.postcode && Object.keys(fieldWarnings).length === 0 && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <span className="text-green-600 text-lg">✓</span>
+                      </div>
                     )}
-                    {validationError && !isVerifying && (
+                  </div>
+                  <div className="min-h-[14px] -mb-1">
+                    {fieldErrors.postcode && !isVerifying && (
                       <p className="text-xs text-destructive">
-                        {validationError}
-                      </p>
-                    )}
-                    {isValid && !isVerifying && (
-                      <p className="text-xs text-success">
-                        ✓ Address verified
+                        {fieldErrors.postcode}
                       </p>
                     )}
                   </div>
@@ -1008,6 +1446,9 @@ const Sites = () => {
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     required
                   />
+                  <div className="min-h-[14px]">
+                    {/* Reserved space for country messages if needed in future */}
+                  </div>
                 </div>
               </div>
 
@@ -1041,7 +1482,8 @@ const Sites = () => {
                 onClick={() => {
                   setIsEditDialogOpen(false);
                   setSelectedSite(null);
-                  setValidationError(null);
+                  setFieldErrors({});
+                  setFieldWarnings({});
                   setIsValid(false);
                 }}
                 disabled={updateSite.isPending}
@@ -1059,7 +1501,7 @@ const Sites = () => {
                   !formData.postcode.trim() ||
                   !formData.country.trim() ||
                   !validatePostcode(formData.postcode, formData.country) ||
-                  (formData.postcode.trim() && validatePostcode(formData.postcode, formData.country) && !isValid && validationError)
+                  Object.keys(fieldErrors).length > 0 // Block only on critical errors, allow with warnings
                 }
               >
                 {updateSite.isPending || isVerifying ? (

@@ -389,13 +389,14 @@ const Booking = () => {
       return;
     }
     
-    // Combine address parts
+    // Combine address parts - always include all 4 parts (even if county is empty) for consistent parsing
+    // This matches the format used in Sites page
     const fullAddress = [
       siteDetails.street,
       siteDetails.city,
-      siteDetails.county,
+      siteDetails.county || "", // Include empty county to maintain 4-part format
       siteDetails.country
-    ].filter(Boolean).join(', ');
+    ].join(', ');
     
     // Determine client ID and name
     let bookingClientId: string | undefined;
@@ -836,15 +837,17 @@ const Booking = () => {
                     }}
                     onAddressDetailsChange={(details) => {
                       // Only auto-fill if creating new site
-                      // Only update fields that are empty to avoid overwriting user input
+                      // When user clicks on map, always update address fields (even if already filled)
+                      // This allows users to correct/update the address by clicking a new location
                       if (selectedSiteId === 'new') {
                         setSiteDetails(prev => ({
                           ...prev,
-                          street: prev.street.trim() || details.street || prev.street,
-                          city: prev.city.trim() || details.city || prev.city,
-                          county: prev.county.trim() || details.county || prev.county,
-                          postcode: prev.postcode.trim() || details.postcode || prev.postcode,
-                          country: prev.country.trim() || details.country || prev.country,
+                          // Update fields if provided in details (even if empty string), otherwise keep previous value
+                          street: details.street !== undefined ? details.street : prev.street,
+                          city: details.city !== undefined ? details.city : prev.city,
+                          county: details.county !== undefined ? details.county : prev.county,
+                          postcode: details.postcode !== undefined ? details.postcode : prev.postcode,
+                          country: details.country !== undefined ? details.country : prev.country,
                         }));
                       }
                     }}
