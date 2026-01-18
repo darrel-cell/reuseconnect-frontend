@@ -79,18 +79,33 @@ const DriverSchedule = () => {
     if (upcomingJobs.length === 0) return null;
 
     let totalDistanceKm = 0;
+    let jobsWithDistance = 0;
 
     for (const job of upcomingJobs) {
       // Use actual roundTripDistanceKm from booking if available
       if (job.roundTripDistanceKm && job.roundTripDistanceKm > 0) {
-        totalDistanceKm += job.roundTripDistanceKm;
+        // For multiple jobs, we can't simply sum roundTripDistanceKm because:
+        // - Each roundTripDistanceKm = warehouse → site → warehouse
+        // - Actual route = warehouse → job1 → job2 → ... → warehouse (much shorter)
+        // So we use a simplified estimate: sum of one-way distances + return to warehouse
+        // This is still an approximation but better than summing full round trips
+        const oneWayDistanceKm = job.roundTripDistanceKm / 2;
+        totalDistanceKm += oneWayDistanceKm;
+        jobsWithDistance++;
       }
       // Do not use travelEmissions / 0.24 as fallback - this is inaccurate
       // If distance is not available, skip it (distance remains 0) to show error/warning
     }
 
+    // Add return trip to warehouse (only if we have jobs with distance)
+    if (jobsWithDistance > 0) {
+      // Estimate return distance: use average one-way distance of jobs
+      const avgOneWayDistance = totalDistanceKm / jobsWithDistance;
+      totalDistanceKm += avgOneWayDistance; // Add return to warehouse
+    }
+
     // Estimate total time:
-    // - Travel time at ~40 km/h average speed
+    // - Travel time at ~40 km/h average speed (urban/rural mix)
     // - Plus 30 minutes on-site per job
     const averageSpeedKmh = 40;
     const travelTimeMinutes = averageSpeedKmh > 0 && totalDistanceKm > 0
@@ -182,11 +197,29 @@ const DriverSchedule = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Estimated Time</p>
-                  <p className="text-2xl font-bold">
-                    {Math.floor(routeStats.estimatedTimeMinutes / 60)}h{" "}
-                    {routeStats.estimatedTimeMinutes % 60}m
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">(Including travel)</p>
+                  {routeStats.totalDistanceKm > 0 ? (
+                    <>
+                      <p className="text-2xl font-bold">
+                        {Math.floor(routeStats.estimatedTimeMinutes / 60)}h{" "}
+                        {routeStats.estimatedTimeMinutes % 60}m
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Approx. (travel + {upcomingJobs.length * 30}min on-site)
+                      </p>
+                      {upcomingJobs.length > 1 && (
+                        <p className="text-xs text-warning mt-0.5">
+                          ⚠️ Estimate only (route optimization not included)
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-warning">--</p>
+                      <p className="text-xs text-warning mt-1">
+                        Distance data unavailable
+                      </p>
+                    </>
+                  )}
                 </div>
                 <Clock className="h-8 w-8 text-warning/50" />
               </div>
